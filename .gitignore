@@ -1,0 +1,36 @@
+# .NET build and publish output
+[Bb]in/
+[Oo]bj/
+publish/
+
+# Frontend
+node_modules/
+frontend/dist/
+
+# Logs (npm-debug.log, app logs, etc.)
+*.log
+
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+
+# SQLite database and its temporary files
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# IDEs: Visual Studio, Rider, VS Code
+.vs/
+*.user
+*.suo
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Windows (Thumbs.db is already covered by *.db)
+[Dd]esktop.ini
