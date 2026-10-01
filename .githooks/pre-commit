@@ -1,0 +1,27 @@
+#!/bin/sh
+# Formats each whole project, not only staged files, so files that skipped the hook
+# (--no-verify) get fixed on the next commit. Only files already staged are re-staged.
+
+# On Windows "npm" is a bash script, and Git clients like Visual Studio resolve bash to WSL's launcher
+if [ "$OS" = "Windows_NT" ]; then npm=npm.cmd; else npm=npm; fi
+
+restage() {
+  echo "$1" | while IFS= read -r file; do
+    git add -- "$file"
+  done
+}
+
+backend=$(git diff --cached --name-only --diff-filter=ACM -- 'backend/*.cs')
+if [ -n "$backend" ]; then
+  echo "pre-commit: formatting backend..."
+  dotnet format backend/MarketApp.slnx whitespace || exit 1
+  dotnet format backend/MarketApp.slnx style --diagnostics IDE0005 IDE0161 || exit 1
+  restage "$backend"
+fi
+
+frontend=$(git diff --cached --name-only --diff-filter=ACM -- 'frontend/')
+if [ -n "$frontend" ]; then
+  echo "pre-commit: formatting frontend..."
+  $npm run format --prefix frontend --silent > /dev/null || exit 1
+  restage "$frontend"
+fi

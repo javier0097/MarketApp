@@ -6,8 +6,23 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- Lint rules block only on push (.githooks/pre-push passes -p:Lint=true), not on every build -->
+  <PropertyGroup Condition="'$(Lint)' == 'true'">
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- CS0162 is a compiler warning, checked on every build: as an error in .editorconfig it would block normal builds too -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS0162</WarningsAsErrors>
+    <!-- IDE0005 is only reported on build with XML docs on; CS1591 (missing doc comments) is its side effect -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
   </ItemGroup>
+
+  <!-- Git never activates hooks from a clone on its own; any build does it here -->
+  <Target Name="ConfigureGitHooks" BeforeTargets="Build">
+    <Exec Command="git config core.hooksPath .githooks" ContinueOnError="true" StandardOutputImportance="low" />
+  </Target>
 
 </Project>

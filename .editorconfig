@@ -1,0 +1,42 @@
+# Stop looking for .editorconfig files in parent folders
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Two trailing spaces are a line break in Markdown
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cs]
+indent_size = 4
+
+# Unnecessary usings. Fixed automatically by the pre-commit hook and Code Cleanup.
+dotnet_diagnostic.IDE0005.severity = error
+
+# Unreachable code: covered by compiler warning CS0162, raised to error on push (Lint in the .csproj).
+# IDE0035 covers the same case and only adds the editor quick fix, so it is not configured.
+
+# Accessibility modifiers required, except on interface members
+dotnet_style_require_accessibility_modifiers = for_non_interface_members
+dotnet_diagnostic.IDE0040.severity = error
+
+# Unused private members
+dotnet_diagnostic.IDE0051.severity = error
+
+# Value assigned but never used; the fix suggests a discard (_ = ...)
+csharp_style_unused_value_assignment_preference = discard_variable
+dotnet_diagnostic.IDE0059.severity = error
+
+# Unused parameters, in all methods (public included)
+dotnet_code_quality_unused_parameters = all
+dotnet_diagnostic.IDE0060.severity = error
+
+# File-scoped namespaces (namespace X;). Fixed automatically by the pre-commit hook and Code Cleanup.
+csharp_style_namespace_declarations = file_scoped
+dotnet_diagnostic.IDE0161.severity = error
