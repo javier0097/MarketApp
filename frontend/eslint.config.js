@@ -27,6 +27,14 @@ export default defineConfig([
       ],
       // A missing dependency leaves stale values on screen without any error
       "react-hooks/exhaustive-deps": "error",
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.property.name=/^(then|catch|finally)$/]",
+          message: "Use async/await with try/catch instead of promise chains.",
+        },
+      ],
     },
   },
 ]);

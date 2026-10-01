@@ -67,8 +67,10 @@ not in a separate folder.
 Code, comments, commits, PRs, issues and internal docs in **English**.
 Everything the user sees — labels, buttons, messages — in **Spanish**.
 
-UI strings live in a translation file from day one, not inline in components.
-Same concept must be worded the same way across every screen.
+UI strings are written inline in the components. No translation file or i18n
+library: the app has a single language and no plans for another. Users are
+addressed formally (usted). Same concept must be worded the same way across
+every screen.
 
 ### API
 
