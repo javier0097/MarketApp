@@ -110,9 +110,10 @@ plus an incident reference that appears in the logs.
 
 ### Dates
 
-Stored in **UTC**, converted at display time. `CreatedAt` / `UpdatedAt` are
-filled automatically (interceptor or `SaveChanges` override), never set by
-hand in endpoints. `UpdatedAt` equals `CreatedAt` on insert.
+Stored in **UTC**, converted at display time. `CreatedAt` / `UpdatedAt` (and
+`RecordedAt` on movements) are set explicitly in the services with
+`DateTime.UtcNow`, so it is visible where they come from. `UpdatedAt` equals
+`CreatedAt` on insert.
 
 ### UI
 

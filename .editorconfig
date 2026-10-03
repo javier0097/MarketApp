@@ -40,3 +40,6 @@ dotnet_diagnostic.IDE0060.severity = error
 # File-scoped namespaces (namespace X;). Fixed automatically by the pre-commit hook and Code Cleanup.
 csharp_style_namespace_declarations = file_scoped
 dotnet_diagnostic.IDE0161.severity = error
+
+[**/Migrations/*.cs]
+generated_code = true
