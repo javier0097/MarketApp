@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Container, Text, Title } from "@mantine/core";
 import { getHealth } from "./api/health.ts";
 
 type HealthStatus = "checking" | "ok" | "error";
@@ -33,10 +34,12 @@ function App() {
   }, []);
 
   return (
-    <main>
-      <h1>MarketApp</h1>
-      <p role="status">{messages[status]}</p>
-    </main>
+    <Container component="main" py="xl">
+      <Title order={1}>MarketApp</Title>
+      <Text role="status" mt="md">
+        {messages[status]}
+      </Text>
+    </Container>
   );
 }
 
