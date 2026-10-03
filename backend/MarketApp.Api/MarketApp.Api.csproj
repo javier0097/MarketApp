@@ -25,4 +25,14 @@
     <Exec Command="git config core.hooksPath .githooks" ContinueOnError="true" StandardOutputImportance="low" />
   </Target>
 
+  <Target Name="BuildFrontend" BeforeTargets="BeforeBuild" Condition="'$(_IsPublishing)' == 'true'">
+    <Exec Command="npm ci" WorkingDirectory="$(MSBuildProjectDirectory)/../../frontend" Condition="!Exists('$(MSBuildProjectDirectory)/../../frontend/node_modules')" />
+    <Exec Command="npm run build" WorkingDirectory="$(MSBuildProjectDirectory)/../../frontend" />
+    <!-- The wwwroot file list was taken before this build: drop files Vite deleted and add the new ones -->
+    <ItemGroup>
+      <Content Remove="@(Content)" Condition="!Exists('%(FullPath)')" />
+      <Content Include="wwwroot/**" Exclude="@(Content)" />
+    </ItemGroup>
+  </Target>
+
 </Project>

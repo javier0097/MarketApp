@@ -1,4 +1,2 @@
-# Build output; the root .gitignore is not read because Prettier runs from frontend/
-dist
 # Generated and rewritten by npm
 package-lock.json

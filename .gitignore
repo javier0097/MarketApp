@@ -5,7 +5,7 @@ publish/
 
 # Frontend
 node_modules/
-frontend/dist/
+backend/MarketApp.Api/wwwroot/
 
 # Logs (npm-debug.log, app logs, etc.)
 *.log
