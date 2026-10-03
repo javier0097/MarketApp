@@ -6,6 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(_IsPublishing)' == 'true'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+  </PropertyGroup>
+
   <!-- Lint rules block only on push (.githooks/pre-push passes -p:Lint=true), not on every build -->
   <PropertyGroup Condition="'$(Lint)' == 'true'">
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
