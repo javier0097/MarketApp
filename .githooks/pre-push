@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# On Windows "npm" and "npx" are bash scripts, and Git clients like Visual Studio resolve bash to WSL's launcher
+if [ "$OS" = "Windows_NT" ]; then npm=npm.cmd; npx=npx.cmd; else npm=npm; npx=npx; fi
+
+fail() {
+  echo "pre-push: $1 failed, push aborted. Fix the errors above and push again."
+  exit 1
+}
+
+echo "pre-push: checking backend..."
+# Release keeps this build apart from the Debug output that a running app may be locking.
+dotnet build backend/MarketApp.slnx -c Release --no-incremental -p:Lint=true -nologo -v q || fail "backend lint"
+
+echo "pre-push: checking frontend..."
+(cd frontend && $npx tsc -b) || fail "frontend type check"
+$npm run lint --prefix frontend --silent || fail "frontend lint"
