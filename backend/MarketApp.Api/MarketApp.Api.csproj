@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
+    <!-- Visual Studio restores without _IsPublishing, so the win-x64 packages the publish needs must always be restored -->
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(_IsPublishing)' == 'true'">
