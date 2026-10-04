@@ -1,0 +1,2 @@
+# Empty on purpose: without a config file, editors fall back to each user's personal Prettier settings
+{}

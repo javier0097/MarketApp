@@ -1,0 +1,2 @@
+# Overrides each machine's core.autocrlf so line endings do not depend on local git config
+* text=auto eol=lf
