@@ -32,5 +32,8 @@ backend/MarketApp.Api/wwwroot/
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# Obsidian vault settings (docs/ is opened as a vault)
+.obsidian/
+
 # Windows (Thumbs.db is already covered by *.db)
 [Dd]esktop.ini
