@@ -9,6 +9,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    open: true,
     proxy: {
       // Must match Urls in backend/MarketApp.Api/appsettings.json
       "/api": "http://localhost:5120",

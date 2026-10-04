@@ -41,5 +41,13 @@ dotnet_diagnostic.IDE0060.severity = error
 csharp_style_namespace_declarations = file_scoped
 dotnet_diagnostic.IDE0161.severity = error
 
+# Simple using statements (using var x = ...;). Fixed automatically by the pre-commit hook and Code Cleanup.
+csharp_prefer_simple_using_statement = true
+dotnet_diagnostic.IDE0063.severity = error
+
+# Using directives outside the namespace. Fixed automatically by the pre-commit hook and Code Cleanup.
+csharp_using_directive_placement = outside_namespace
+dotnet_diagnostic.IDE0065.severity = error
+
 [**/Migrations/*.cs]
 generated_code = true

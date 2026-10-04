@@ -23,7 +23,7 @@ public class MarketAppDbContext(DbContextOptions<MarketAppDbContext> options) : 
 
         modelBuilder.Entity<InventoryMovement>(movement =>
         {
-            movement.HasOne<Product>().WithMany().HasForeignKey(m => m.ProductId);
+            movement.HasOne<Product>().WithMany().HasForeignKey(m => m.ProductId).OnDelete(DeleteBehavior.Restrict);
             movement.ToTable(t =>
             {
                 t.HasCheckConstraint("CK_InventoryMovement_Quantity_Positive", "\"Quantity\" > 0");

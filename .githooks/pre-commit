@@ -14,8 +14,8 @@ restage() {
 backend=$(git diff --cached --name-only --diff-filter=ACM -- 'backend/*.cs')
 if [ -n "$backend" ]; then
   echo "pre-commit: formatting backend..."
+  dotnet format backend/MarketApp.slnx style --diagnostics IDE0005 IDE0161 IDE0063 IDE0065 || exit 1
   dotnet format backend/MarketApp.slnx whitespace || exit 1
-  dotnet format backend/MarketApp.slnx style --diagnostics IDE0005 IDE0161 || exit 1
   restage "$backend"
 fi
 
