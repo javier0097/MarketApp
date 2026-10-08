@@ -1,6 +1,10 @@
-using System.Diagnostics;
 using MarketApp.Api.Data;
+using MarketApp.Api.Exceptions;
+using MarketApp.Api.Services;
+using MarketApp.Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
+using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 var appUrl = builder.Configuration["Urls"]!;
@@ -13,14 +17,23 @@ if (builder.Environment.IsProduction() && !isFirstInstance)
     return;
 }
 
+builder.Services.AddSerilog(configuration => configuration.ReadFrom.Configuration(builder.Configuration));
+
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
-builder.Services.AddDbContext<MarketAppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("MarketApp")));
+builder.Services.AddDbContext<MarketAppDbContext>(options => options
+    .UseSqlite(builder.Configuration.GetConnectionString("MarketApp"))
+    .EnableSensitiveDataLogging());
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
 app.MigrateDatabase();
+
+app.UseSerilogRequestLogging();
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {

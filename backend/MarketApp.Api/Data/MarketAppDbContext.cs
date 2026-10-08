@@ -15,11 +15,7 @@ public class MarketAppDbContext(DbContextOptions<MarketAppDbContext> options) : 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Product>(product =>
-        {
-            product.HasIndex(p => p.Code).IsUnique();
-            product.HasQueryFilter(p => p.IsActive);
-        });
+        modelBuilder.Entity<Product>(product => product.HasIndex(p => p.Code).IsUnique());
 
         modelBuilder.Entity<InventoryMovement>(movement =>
         {

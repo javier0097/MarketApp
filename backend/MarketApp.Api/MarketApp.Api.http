@@ -4,3 +4,14 @@ GET {{MarketApp.Api_HostAddress}}/api/health
 Accept: application/json
 
 ###
+
+POST {{MarketApp.Api_HostAddress}}/api/products
+Content-Type: application/json
+
+{
+  "code": "7501234567890",
+  "name": "Leche Pil 1L",
+  "salePrice": 1250
+}
+
+###

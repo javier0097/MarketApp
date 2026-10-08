@@ -13,7 +13,7 @@ Two tables: `Products` and `InventoryMovements`. The entities live in
 | `Code` | `string` | Required, unique. A barcode, or an internal code when the product has none |
 | `SalePrice` | `int` | Cents |
 | `MinStock` | `int` | Units. Below this, the product needs restocking |
-| `IsActive` | `bool` | `true` by default. Inactive products are hidden from every query |
+| `IsActive` | `bool` | `true` by default. Queries that only want active products filter it explicitly |
 | `CreatedAt` / `UpdatedAt` | `DateTime` | UTC |
 | `CreatedById` / `UpdatedById` | `int?` | Null until authentication exists |
 

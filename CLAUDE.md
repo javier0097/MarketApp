@@ -80,6 +80,23 @@ every screen.
 - Business operations are not forced into CRUD shape. Recording an inventory
   movement is an operation, not an insert.
 
+### Backend architecture
+
+- Controllers receive and respond. Services hold the business logic and use
+  `MarketAppDbContext` directly.
+- Every service has an interface in `Services/Interfaces/` (`IProductService`), and
+  controllers and other services depend on the interface, so a service can be
+  replaced by a fake when testing the services that use it.
+- No repository layer and no custom Unit of Work: the `DbContext` already is
+  both, and the app will not switch ORM. No interfaces over data access:
+  services are tested against SQLite in memory, the same engine as production.
+- A query used in more than one place becomes an extension method on
+  `IQueryable<T>` in `Queries/` (one file per entity, e.g. `ProductQueries.cs`).
+  Extract it when the second use appears, not before.
+- `SaveChangesAsync()` is called once per operation, in the service method an
+  endpoint calls. Reusable logic lives in methods that change data without
+  saving; an operation never calls another operation.
+
 ### Money and quantities
 
 Money is stored as **integer cents**, never floating point — SQLite has no
@@ -94,18 +111,22 @@ Round as late as possible — only when a number is shown or charged.
 
 ### Errors
 
-The API returns a **code**, optional **params** and the offending **field** —
-never a display message. The frontend owns the text.
+Validation errors use ASP.NET's standard format (`400` with an `errors` object
+grouped by field), and each message is the Spanish text the user sees. The
+frontend shows it next to its field; it keeps no message dictionary.
 
 ```json
-{ "code": "PRODUCT_CODE_DUPLICATE", "params": { "code": "7501234567890" }, "field": "code" }
+{ "errors": { "Code": ["Ya existe un producto con este código."] } }
 ```
 
-One error code per specific cause. Never a generic `VALIDATION_ERROR` that the
-UI turns into "something went wrong". If two situations need different
-messages, they are two codes.
+Rules and their messages live together: attributes on the request DTOs.
+Rules that need the database (such as a duplicate code) live in the services,
+which throw `FieldValidationException(field, message)`;
+`GlobalExceptionHandler` turns it into the same format, so
+controllers never check for errors. One message per specific cause: never a generic "something
+went wrong" for a validation error.
 
-Exceptions and logs stay in English. Unexpected failures get a generic code
+Exceptions and logs stay in English. Unexpected failures get a generic message
 plus an incident reference that appears in the logs.
 
 ### Dates
@@ -174,8 +195,10 @@ Decisions that are not obvious from the code:
   entered (automatic). Retroactive entry must work — when the app is
   unavailable they write on paper and load it later.
 - **Quantity is always positive.** The sign is given by the movement type.
-- **Nothing is deleted.** Products are deactivated (`IsActive`, filtered by
-  default via a global query filter), movements are voided with a reason.
+- **Nothing is deleted.** Products are deactivated (`IsActive`), movements are
+  voided with a reason. There is no global query filter: queries that only
+  want active products filter `IsActive` explicitly, so a filter never hides
+  data silently from a report.
 - **User columns are nullable** until auth exists.
 - **Ids are auto-increment integers.**
 
