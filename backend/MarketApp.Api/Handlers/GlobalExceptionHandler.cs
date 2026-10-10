@@ -1,8 +1,9 @@
 using System.Diagnostics;
+using MarketApp.Api.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
-namespace MarketApp.Api.Exceptions;
+namespace MarketApp.Api.Handlers;
 
 public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {

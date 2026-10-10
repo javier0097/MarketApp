@@ -1,5 +1,5 @@
 using MarketApp.Api.Data;
-using MarketApp.Api.Exceptions;
+using MarketApp.Api.Handlers;
 using MarketApp.Api.Services;
 using MarketApp.Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;

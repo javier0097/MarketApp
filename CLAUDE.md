@@ -94,6 +94,13 @@ every screen.
   file per entity, e.g. `ProductQueries.cs`) when it is used in more than one
   place, or when it is so long that the service method no longer reads
   clearly. Short queries stay inline in the service.
+- Types carry a suffix that says what they are, set by their folder:
+  `Controllers/` → `Controller`, `Services/` → `Service`,
+  `Services/Interfaces/` → `I…Service`, `Helpers/` → `Helper`, `Queries/` →
+  `Queries`, `Exceptions/` → `Exception`, `Handlers/` → `Handler`,
+  `Dtos/Requests/` → `Request`, `Dtos/Responses/` → `Response`. Lint enforces
+  it (IDE1006 rules in `.editorconfig`). Entities and enums have no suffix:
+  `Product` is the product itself, and .NET discourages an `Enum` suffix.
 - `SaveChangesAsync()` is called once per operation, in the service method an
   endpoint calls. Reusable logic lives in methods that change data without
   saving; an operation never calls another operation.

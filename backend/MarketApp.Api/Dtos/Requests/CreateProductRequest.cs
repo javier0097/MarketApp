@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace MarketApp.Api.Dtos;
+namespace MarketApp.Api.Dtos.Requests;
 
 public record CreateProductRequest
 {
