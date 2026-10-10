@@ -15,3 +15,8 @@ Content-Type: application/json
 }
 
 ###
+
+GET {{MarketApp.Api_HostAddress}}/api/products/next-internal-code
+Accept: application/json
+
+###

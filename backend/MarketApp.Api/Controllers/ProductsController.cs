@@ -14,4 +14,11 @@ public class ProductsController(IProductService productService) : ControllerBase
         var product = await productService.CreateAsync(request);
         return StatusCode(StatusCodes.Status201Created, product);
     }
+
+    [HttpGet("next-internal-code")]
+    public async Task<IActionResult> GetNextInternalCode()
+    {
+        var code = await productService.GetNextInternalCodeAsync();
+        return Ok(new NextInternalCodeResponse(code));
+    }
 }

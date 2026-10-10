@@ -90,9 +90,10 @@ every screen.
 - No repository layer and no custom Unit of Work: the `DbContext` already is
   both, and the app will not switch ORM. No interfaces over data access:
   services are tested against SQLite in memory, the same engine as production.
-- A query used in more than one place becomes an extension method on
-  `IQueryable<T>` in `Queries/` (one file per entity, e.g. `ProductQueries.cs`).
-  Extract it when the second use appears, not before.
+- A query becomes an extension method on `IQueryable<T>` in `Queries/` (one
+  file per entity, e.g. `ProductQueries.cs`) when it is used in more than one
+  place, or when it is so long that the service method no longer reads
+  clearly. Short queries stay inline in the service.
 - `SaveChangesAsync()` is called once per operation, in the service method an
   endpoint calls. Reusable logic lives in methods that change data without
   saving; an operation never calls another operation.
@@ -186,9 +187,13 @@ Decisions that are not obvious from the code:
 
 - **Stock is not stored.** It is derived by summing movements. Same for cost.
   Single source of truth; a diff can always be audited.
-- **`Product.Code` is unique and required.** If none is supplied, the backend
-  generates an internal one (`INT-00001`, letter prefix so it can never
-  collide with a real EAN/UPC). Barcodes and internal codes share one column.
+- **`Product.Code` is unique and required.** Barcodes and internal codes
+  share one column. Products without a barcode get an internal code
+  (`TMV00001`): the form asks the backend for the next one, shows it and sends
+  it. Barcodes are digits only, so a letter prefix can never collide with one;
+  `TMV` (Toma&Ve) has no letters that look like digits, and there is no
+  hyphen because scanners configured for another keyboard layout type it
+  wrong. A `TMV` code is only accepted if it is exactly the next one.
 - **`InventoryMovement.Amount`** is generic — cost on inbound, income on
   outbound. Not nullable; `0` means no money was involved.
 - **Two dates per movement:** when it happened (editable) and when it was

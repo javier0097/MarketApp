@@ -10,7 +10,7 @@ Two tables: `Products` and `InventoryMovements`. The entities live in
 | --- | --- | --- |
 | `Id` | `int` | Auto-increment |
 | `Name` | `string` | Required |
-| `Code` | `string` | Required, unique. A barcode, or an internal code when the product has none |
+| `Code` | `string` | Required, unique. A barcode, or an internal code (`TMV00001`) when the product has none |
 | `SalePrice` | `int` | Cents |
 | `MinStock` | `int` | Units. Below this, the product needs restocking |
 | `IsActive` | `bool` | `true` by default. Queries that only want active products filter it explicitly |
@@ -42,6 +42,15 @@ figure can be traced back to the movements behind it.
 **Money is stored as integer cents.** SQLite has no decimal type, and
 floating point rounding errors in a finance app are silent and add up over
 time. Amounts are converted to currency only when shown.
+
+**Internal codes are `TMV` plus five digits** (`TMV00001`, `TMV00002`, ...).
+Barcodes (EAN, UPC, GTIN) are digits only, so a letter prefix can never
+collide with one. `TMV` stands for Toma&Ve and has no letters that look like
+digits (O, I, L, S, B, Z). There is no hyphen: a scanner configured for a
+different keyboard layout than the computer types it as another character.
+The fixed width keeps alphabetical order equal to numeric order, which is how
+the next code is found. A `TMV` code is only accepted if it is exactly the next
+one, so a hand-typed one cannot break the sequence.
 
 **Quantity is always positive.** Whether it adds or subtracts stock is given
 by `Type`, so a sign can never be wrong.
