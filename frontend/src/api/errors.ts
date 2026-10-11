@@ -7,3 +7,5 @@ export class ValidationError extends Error {
     this.errors = errors;
   }
 }
+
+export class ApiError extends Error {}

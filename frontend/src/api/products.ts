@@ -1,4 +1,4 @@
-import { ValidationError } from "./errors.ts";
+import { request } from "./request.ts";
 
 export type CreateProductRequest = {
   code: string;
@@ -15,28 +15,16 @@ export type ProductResponse = {
 
 type NextInternalCodeResponse = { code: string };
 
-export async function createProduct(
-  request: CreateProductRequest,
+export function createProduct(
+  product: CreateProductRequest,
 ): Promise<ProductResponse> {
-  const response = await fetch("/api/products", {
+  return request("/api/products", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
+    body: JSON.stringify(product),
   });
-  if (response.status === 400) {
-    const problem = await response.json();
-    throw new ValidationError(problem.errors);
-  }
-  if (!response.ok) {
-    throw new Error(`Create product failed with status ${response.status}`);
-  }
-  return response.json();
 }
 
-export async function getNextInternalCode(): Promise<NextInternalCodeResponse> {
-  const response = await fetch("/api/products/next-internal-code");
-  if (!response.ok) {
-    throw new Error(`Next internal code failed with status ${response.status}`);
-  }
-  return response.json();
+export function getNextInternalCode(): Promise<NextInternalCodeResponse> {
+  return request("/api/products/next-internal-code");
 }
