@@ -105,6 +105,18 @@ every screen.
   endpoint calls. Reusable logic lives in methods that change data without
   saving; an operation never calls another operation.
 
+### Frontend structure
+
+What a file is comes from React conventions and its folder:
+
+| What | Recognized by | Example |
+| --- | --- | --- |
+| Screens and their components | one folder per area | `products/ProductForm.tsx` |
+| Component | PascalCase, `.tsx` | `ProductForm.tsx` |
+| Hook | `use` prefix | `useNextInternalCode.ts` |
+| API calls | `api/`, one file per resource | `api/products.ts` |
+| Utility functions | `lib/` | `lib/money.ts` |
+
 ### Money and quantities
 
 Money is stored as **integer cents**, never floating point — SQLite has no
@@ -124,8 +136,11 @@ grouped by field), and each message is the Spanish text the user sees. The
 frontend shows it next to its field; it keeps no message dictionary.
 
 ```json
-{ "errors": { "Code": ["Ya existe un producto con este código."] } }
+{ "errors": { "code": ["Ya existe un producto con este código."] } }
 ```
+
+Keys are the JSON property names (`salePrice`), the same ones the frontend
+sends, so a field is spelled the same way everywhere in the frontend.
 
 Rules and their messages live together: attributes on the request DTOs.
 Rules that need the database (such as a duplicate code) live in the services,

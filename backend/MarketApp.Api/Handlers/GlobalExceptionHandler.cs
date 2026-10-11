@@ -1,7 +1,8 @@
-using System.Diagnostics;
 using MarketApp.Api.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
+using System.Text.Json;
 
 namespace MarketApp.Api.Handlers;
 
@@ -17,7 +18,8 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
                 logger.LogInformation("Validation failed: {Field} {Message}", validation.Field, validation.Message);
                 problem = new ValidationProblemDetails(new Dictionary<string, string[]>
                 {
-                    [validation.Field] = [validation.Message],
+                    // camelCase, like the keys of attribute errors in FE
+                    [JsonNamingPolicy.CamelCase.ConvertName(validation.Field)] = [validation.Message],
                 })
                 {
                     Status = StatusCodes.Status400BadRequest,

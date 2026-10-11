@@ -2,6 +2,7 @@ using MarketApp.Api.Data;
 using MarketApp.Api.Handlers;
 using MarketApp.Api.Services;
 using MarketApp.Api.Services.Interfaces;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using System.Diagnostics;
@@ -19,7 +20,9 @@ if (builder.Environment.IsProduction() && !isFirstInstance)
 
 builder.Services.AddSerilog(configuration => configuration.ReadFrom.Configuration(builder.Configuration));
 
-builder.Services.AddControllers();
+// Validation error keys use the JSON property names (salePrice), not the C# ones (SalePrice)
+builder.Services.AddControllers(options =>
+    options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider()));
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<MarketAppDbContext>(options => options
     .UseSqlite(builder.Configuration.GetConnectionString("MarketApp"))
