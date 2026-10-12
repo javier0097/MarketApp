@@ -80,6 +80,43 @@ every screen.
 - Business operations are not forced into CRUD shape. Recording an inventory
   movement is an operation, not an insert.
 
+### Backend architecture
+
+- Controllers receive and respond. Services hold the business logic and use
+  `MarketAppDbContext` directly.
+- Every service has an interface in `Services/Interfaces/` (`IProductService`), and
+  controllers and other services depend on the interface, so a service can be
+  replaced by a fake when testing the services that use it.
+- No repository layer and no custom Unit of Work: the `DbContext` already is
+  both, and the app will not switch ORM. No interfaces over data access:
+  services are tested against SQLite in memory, the same engine as production.
+- A query becomes an extension method on `IQueryable<T>` in `Queries/` (one
+  file per entity, e.g. `ProductQueries.cs`) when it is used in more than one
+  place, or when it is so long that the service method no longer reads
+  clearly. Short queries stay inline in the service.
+- Types carry a suffix that says what they are, set by their folder:
+  `Controllers/` → `Controller`, `Services/` → `Service`,
+  `Services/Interfaces/` → `I…Service`, `Helpers/` → `Helper`, `Queries/` →
+  `Queries`, `Exceptions/` → `Exception`, `Handlers/` → `Handler`,
+  `Dtos/Requests/` → `Request`, `Dtos/Responses/` → `Response`. Lint enforces
+  it (IDE1006 rules in `.editorconfig`). Entities and enums have no suffix:
+  `Product` is the product itself, and .NET discourages an `Enum` suffix.
+- `SaveChangesAsync()` is called once per operation, in the service method an
+  endpoint calls. Reusable logic lives in methods that change data without
+  saving; an operation never calls another operation.
+
+### Frontend structure
+
+What a file is comes from React conventions and its folder:
+
+| What | Recognized by | Example |
+| --- | --- | --- |
+| Screens and their components | one folder per area | `products/ProductForm.tsx` |
+| Component | PascalCase, `.tsx` | `ProductForm.tsx` |
+| Hook | `use` prefix | `useNextInternalCode.ts` |
+| API calls | `api/`, one file per resource | `api/products.ts` |
+| Utility functions | `lib/` | `lib/money.ts` |
+
 ### Money and quantities
 
 Money is stored as **integer cents**, never floating point — SQLite has no
@@ -94,18 +131,25 @@ Round as late as possible — only when a number is shown or charged.
 
 ### Errors
 
-The API returns a **code**, optional **params** and the offending **field** —
-never a display message. The frontend owns the text.
+Validation errors use ASP.NET's standard format (`400` with an `errors` object
+grouped by field), and each message is the Spanish text the user sees. The
+frontend shows it next to its field; it keeps no message dictionary.
 
 ```json
-{ "code": "PRODUCT_CODE_DUPLICATE", "params": { "code": "7501234567890" }, "field": "code" }
+{ "errors": { "code": ["Ya existe un producto con este código."] } }
 ```
 
-One error code per specific cause. Never a generic `VALIDATION_ERROR` that the
-UI turns into "something went wrong". If two situations need different
-messages, they are two codes.
+Keys are the JSON property names (`salePrice`), the same ones the frontend
+sends, so a field is spelled the same way everywhere in the frontend.
 
-Exceptions and logs stay in English. Unexpected failures get a generic code
+Rules and their messages live together: attributes on the request DTOs.
+Rules that need the database (such as a duplicate code) live in the services,
+which throw `FieldValidationException(field, message)`;
+`GlobalExceptionHandler` turns it into the same format, so
+controllers never check for errors. One message per specific cause: never a generic "something
+went wrong" for a validation error.
+
+Exceptions and logs stay in English. Unexpected failures get a generic message
 plus an incident reference that appears in the logs.
 
 ### Dates
@@ -148,6 +192,13 @@ them.
 - End-to-end tests only once a flow has stopped changing.
 - No coverage targets. Effort proportional to damage: money and stock are high
   risk, cosmetic issues are not.
+- Bugs come back as tests: when fixing a bug, add the test that would have
+  caught it.
+- Manual testing attacks the app, not just the happy path: empty fields,
+  negative numbers, odd decimals, very long text, double clicks, closing
+  halfway, no connection, duplicate data.
+- Test data must be realistic in shape and volume: three products hide what
+  three hundred show.
 
 ### Git
 
@@ -165,17 +216,23 @@ Decisions that are not obvious from the code:
 
 - **Stock is not stored.** It is derived by summing movements. Same for cost.
   Single source of truth; a diff can always be audited.
-- **`Product.Code` is unique and required.** If none is supplied, the backend
-  generates an internal one (`INT-00001`, letter prefix so it can never
-  collide with a real EAN/UPC). Barcodes and internal codes share one column.
+- **`Product.Code` is unique and required.** Barcodes and internal codes
+  share one column. Products without a barcode get an internal code
+  (`TMV00001`): the form asks the backend for the next one, shows it and sends
+  it. Barcodes are digits only, so a letter prefix can never collide with one;
+  `TMV` (Toma&Ve) has no letters that look like digits, and there is no
+  hyphen because scanners configured for another keyboard layout type it
+  wrong. A `TMV` code is only accepted if it is exactly the next one.
 - **`InventoryMovement.Amount`** is generic — cost on inbound, income on
   outbound. Not nullable; `0` means no money was involved.
 - **Two dates per movement:** when it happened (editable) and when it was
   entered (automatic). Retroactive entry must work — when the app is
   unavailable they write on paper and load it later.
 - **Quantity is always positive.** The sign is given by the movement type.
-- **Nothing is deleted.** Products are deactivated (`IsActive`, filtered by
-  default via a global query filter), movements are voided with a reason.
+- **Nothing is deleted.** Products are deactivated (`IsActive`), movements are
+  voided with a reason. There is no global query filter: queries that only
+  want active products filter `IsActive` explicitly, so a filter never hides
+  data silently from a report.
 - **User columns are nullable** until auth exists.
 - **Ids are auto-increment integers.**
 
@@ -185,6 +242,10 @@ stock field, adjustment movement type.
 ## How to work here
 
 - **One task at a time.** Do not implement several checklist items in one go.
+- **Acceptance criteria are written before coding**, in the ticket's
+  "Done when" section. They are the only check against one's own
+  interpretation: written afterwards, they describe what the code already
+  does. Code is checked against them, never the other way round.
 - **Explain the approach before writing code**, especially what each piece of
   configuration does and why. Understanding the integration is an explicit
   goal of this project.

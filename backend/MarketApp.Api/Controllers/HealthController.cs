@@ -1,4 +1,5 @@
 using MarketApp.Api.Data;
+using MarketApp.Api.Dtos.Responses;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MarketApp.Api.Controllers;
@@ -18,5 +19,3 @@ public class HealthController(MarketAppDbContext db) : ControllerBase
         return Ok(new HealthResponse("ok"));
     }
 }
-
-public record HealthResponse(string Status);

@@ -49,5 +49,83 @@ dotnet_diagnostic.IDE0063.severity = error
 csharp_using_directive_placement = outside_namespace
 dotnet_diagnostic.IDE0065.severity = error
 
+# Naming rules. Each folder below requires a suffix that says what its types are;
+# the rule checks the folder, not what the type actually is.
+dotnet_diagnostic.IDE1006.severity = error
+
+[**/Controllers/*.cs]
+dotnet_naming_symbols.controller_types.applicable_kinds = class
+dotnet_naming_style.controller_suffix.capitalization = pascal_case
+dotnet_naming_style.controller_suffix.required_suffix = Controller
+dotnet_naming_rule.controllers_end_with_controller.symbols = controller_types
+dotnet_naming_rule.controllers_end_with_controller.style = controller_suffix
+dotnet_naming_rule.controllers_end_with_controller.severity = error
+
+# Only the files directly in Services/: interfaces live in Services/Interfaces/
+[**/Services/*.cs]
+dotnet_naming_symbols.service_types.applicable_kinds = class
+dotnet_naming_style.service_suffix.capitalization = pascal_case
+dotnet_naming_style.service_suffix.required_suffix = Service
+dotnet_naming_rule.services_end_with_service.symbols = service_types
+dotnet_naming_rule.services_end_with_service.style = service_suffix
+dotnet_naming_rule.services_end_with_service.severity = error
+
+[**/Services/Interfaces/*.cs]
+dotnet_naming_symbols.service_interfaces.applicable_kinds = interface
+dotnet_naming_style.service_interface_affixes.capitalization = pascal_case
+dotnet_naming_style.service_interface_affixes.required_prefix = I
+dotnet_naming_style.service_interface_affixes.required_suffix = Service
+dotnet_naming_rule.service_interfaces_are_i_service.symbols = service_interfaces
+dotnet_naming_rule.service_interfaces_are_i_service.style = service_interface_affixes
+dotnet_naming_rule.service_interfaces_are_i_service.severity = error
+
+[**/Helpers/*.cs]
+dotnet_naming_symbols.helper_types.applicable_kinds = class
+dotnet_naming_style.helper_suffix.capitalization = pascal_case
+dotnet_naming_style.helper_suffix.required_suffix = Helper
+dotnet_naming_rule.helpers_end_with_helper.symbols = helper_types
+dotnet_naming_rule.helpers_end_with_helper.style = helper_suffix
+dotnet_naming_rule.helpers_end_with_helper.severity = error
+
+[**/Queries/*.cs]
+dotnet_naming_symbols.query_types.applicable_kinds = class
+dotnet_naming_style.queries_suffix.capitalization = pascal_case
+dotnet_naming_style.queries_suffix.required_suffix = Queries
+dotnet_naming_rule.queries_end_with_queries.symbols = query_types
+dotnet_naming_rule.queries_end_with_queries.style = queries_suffix
+dotnet_naming_rule.queries_end_with_queries.severity = error
+
+[**/Exceptions/*.cs]
+dotnet_naming_symbols.exception_types.applicable_kinds = class
+dotnet_naming_style.exception_suffix.capitalization = pascal_case
+dotnet_naming_style.exception_suffix.required_suffix = Exception
+dotnet_naming_rule.exceptions_end_with_exception.symbols = exception_types
+dotnet_naming_rule.exceptions_end_with_exception.style = exception_suffix
+dotnet_naming_rule.exceptions_end_with_exception.severity = error
+
+[**/Handlers/*.cs]
+dotnet_naming_symbols.handler_types.applicable_kinds = class
+dotnet_naming_style.handler_suffix.capitalization = pascal_case
+dotnet_naming_style.handler_suffix.required_suffix = Handler
+dotnet_naming_rule.handlers_end_with_handler.symbols = handler_types
+dotnet_naming_rule.handlers_end_with_handler.style = handler_suffix
+dotnet_naming_rule.handlers_end_with_handler.severity = error
+
+[**/Dtos/Requests/*.cs]
+dotnet_naming_symbols.request_types.applicable_kinds = class
+dotnet_naming_style.request_suffix.capitalization = pascal_case
+dotnet_naming_style.request_suffix.required_suffix = Request
+dotnet_naming_rule.requests_end_with_request.symbols = request_types
+dotnet_naming_rule.requests_end_with_request.style = request_suffix
+dotnet_naming_rule.requests_end_with_request.severity = error
+
+[**/Dtos/Responses/*.cs]
+dotnet_naming_symbols.response_types.applicable_kinds = class
+dotnet_naming_style.response_suffix.capitalization = pascal_case
+dotnet_naming_style.response_suffix.required_suffix = Response
+dotnet_naming_rule.responses_end_with_response.symbols = response_types
+dotnet_naming_rule.responses_end_with_response.style = response_suffix
+dotnet_naming_rule.responses_end_with_response.severity = error
+
 [**/Migrations/*.cs]
 generated_code = true
