@@ -192,6 +192,13 @@ them.
 - End-to-end tests only once a flow has stopped changing.
 - No coverage targets. Effort proportional to damage: money and stock are high
   risk, cosmetic issues are not.
+- Bugs come back as tests: when fixing a bug, add the test that would have
+  caught it.
+- Manual testing attacks the app, not just the happy path: empty fields,
+  negative numbers, odd decimals, very long text, double clicks, closing
+  halfway, no connection, duplicate data.
+- Test data must be realistic in shape and volume: three products hide what
+  three hundred show.
 
 ### Git
 
@@ -235,6 +242,10 @@ stock field, adjustment movement type.
 ## How to work here
 
 - **One task at a time.** Do not implement several checklist items in one go.
+- **Acceptance criteria are written before coding**, in the ticket's
+  "Done when" section. They are the only check against one's own
+  interpretation: written afterwards, they describe what the code already
+  does. Code is checked against them, never the other way round.
 - **Explain the approach before writing code**, especially what each piece of
   configuration does and why. Understanding the integration is an explicit
   goal of this project.
