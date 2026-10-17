@@ -51,12 +51,29 @@ dotnet ef migrations add <Name> --project backend/MarketApp.Api --output-dir Dat
 It is applied automatically the next time the backend starts, in development
 and on the store laptop.
 
+### Tests
+
+| | Command | Where the tests live |
+| --- | --- | --- |
+| Backend | `dotnet test --solution backend/MarketApp.slnx` | `backend/MarketApp.Api.Tests` |
+| Frontend | `npm test --prefix frontend` | next to the code they test, as `*.test.ts` |
+
+`dotnet test` takes `--solution` or `--project` before the path, because the
+repo uses the new test platform (see [Development](docs/development.md#tests)).
+To rerun the frontend tests on every change while coding, run `npx vitest`
+inside `frontend/`.
+
+The backend tests use their own in-memory databases and never touch
+`marketapp.db`. Their logs go to
+`backend/MarketApp.Api.Tests/bin/Debug/net10.0/logs`.
+
 ### Git hooks
 
 - **pre-commit** formats the backend and the frontend and re-stages the
   files that were already staged. It never blocks a commit for formatting.
-- **pre-push** runs the backend lint rules, the TypeScript type check and
-  ESLint, and blocks the push if any of them fails.
+- **pre-push** runs the backend lint rules and tests, the TypeScript type
+  check, ESLint and the frontend tests, and blocks the push if any of them
+  fails.
 
 ## Publish
 

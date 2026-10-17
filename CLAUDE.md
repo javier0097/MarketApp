@@ -48,7 +48,7 @@ PostgreSQL (they run background services), the Visual Studio React template
 /
 ├── backend/
 │   ├── MarketApp.Api/
-│   ├── MarketApp.Api.Tests/   # not created yet
+│   ├── MarketApp.Api.Tests/
 │   └── MarketApp.slnx
 ├── frontend/              # Vite project, own conventions
 ├── docs/
@@ -261,4 +261,8 @@ dotnet run --project backend/MarketApp.Api
 
 # Frontend (dev)
 npm run dev --prefix frontend
+
+# Tests (dotnet test needs --solution or --project: the repo uses Microsoft.Testing.Platform)
+dotnet test --solution backend/MarketApp.slnx
+npm test --prefix frontend
 ```

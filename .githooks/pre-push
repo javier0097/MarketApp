@@ -11,7 +11,12 @@ fail() {
 echo "pre-push: checking backend..."
 # Release keeps this build apart from the Debug output that a running app may be locking.
 dotnet build backend/MarketApp.slnx -c Release --no-incremental -p:Lint=true -nologo -v q || fail "backend lint"
+# --no-build reuses the Release build above.
+# TODO(#7): remove --ignore-exit-code 8 (no tests ran) once the first backend tests exist
+dotnet test --solution backend/MarketApp.slnx -c Release --no-build --ignore-exit-code 8 || fail "backend tests"
 
 echo "pre-push: checking frontend..."
 (cd frontend && $npx tsc -b) || fail "frontend type check"
 $npm run lint --prefix frontend --silent || fail "frontend lint"
+# TODO(#7): remove --passWithNoTests once the first frontend tests exist
+$npm test --prefix frontend --silent -- --passWithNoTests || fail "frontend tests"
