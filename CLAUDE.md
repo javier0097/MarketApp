@@ -52,6 +52,7 @@ PostgreSQL (they run background services), the Visual Studio React template
 │   └── MarketApp.slnx
 ├── frontend/              # Vite project, own conventions
 ├── docs/
+├── scripts/               # start the testing agents and the QA app
 └── README.md
 ```
 
@@ -199,6 +200,9 @@ them.
   halfway, no connection, duplicate data.
 - Test data must be realistic in shape and volume: three products hide what
   three hundred show.
+- Tests and QA are done by the test-writer and qa-tester agents, in sessions
+  of their own that cannot see the code (`docs/development.md`, "Testing
+  agents"). A session that builds a feature does not write its tests.
 
 ### Git
 

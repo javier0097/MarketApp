@@ -46,3 +46,41 @@ the browser, `C:\ProgramData`) never happens.
 **Only plain functions are tested in the frontend.** Component tests (jsdom,
 Testing Library) and end-to-end tests are left out while the screens keep
 changing; whether to add them is tracked in #9.
+
+## Testing agents
+
+Whoever builds a feature tests it predictably badly: knowing the design, they
+follow the paths they know work. So tests and QA are done by two agents in
+`.claude/agents/`, each started by its own script in `scripts/`, in a session
+of its own, with the task written by the developer.
+
+**Each ticket goes through them in this order:** the test-writer writes the
+tests from a specification, the qa-tester tries to break the screen, then the
+ticket's "Done when" criteria are checked, and only then the PR. The qa-tester
+never gets the acceptance criteria: they would anchor it to what was already
+expected. They stay as a separate check, done at the end.
+
+**Neither agent can see the code.**
+
+- The scripts turn auto memory off and pass `.claude/isolated-agent.settings.json`,
+  which skips every `CLAUDE.md`. The agents' own `omitClaudeMd` is not enough:
+  Claude Code ignores it when an agent runs as the main session (`--agent`).
+- The test-writer can only create files. The qa-tester has the browser, web
+  search and file creation; the browser tools that run code inside the page are
+  removed, so it can only use the screen.
+- Their prompts describe what they need instead of letting them read it: the
+  test conventions and the `Support/` helpers (test-writer), and what any user
+  knows about the store (qa-tester). **If you change `Support/`, the lint rules
+  or how tests are written, update `.claude/agents/test-writer.md` too.**
+
+**The qa-tester's browser** is Playwright, set up in `.claude/qa-tester.mcp.json`:
+Microsoft Edge, a profile kept in memory, and only the QA app allowed. The
+script passes `--strict-mcp-config`, so no other MCP server (such as Notion)
+loads. The snapshots it saves go to `.playwright-mcp/`, which is git-ignored.
+
+**The QA environment** (`appsettings.QA.json`) is not Production, so it never
+takes the single-instance mutex or opens the browser by itself. It runs without
+the launch profile, which would set the Development environment; the published
+app never uses `launchSettings.json` either. Its database keeps data from
+earlier sessions, like a real QA environment: existing data shows bugs an empty
+database hides. Each finding in a report records the data that mattered.

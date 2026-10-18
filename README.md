@@ -67,6 +67,25 @@ The backend tests use their own in-memory databases and never touch
 `marketapp.db`. Their logs go to
 `backend/MarketApp.Api.Tests/bin/Debug/net10.0/logs`.
 
+### Testing agents
+
+Tests and QA are done by two Claude Code agents that cannot see the code (why:
+[Development](docs/development.md#testing-agents)). They need the Claude Code
+CLI installed, signed in and on the `PATH` (`claude --version` must work).
+
+| Script | What it does |
+| --- | --- |
+| `.\scripts\test-writer.cmd` | Opens the test-writer. Give it what to test (signatures or an API contract), the rule it must follow and where to write the tests. Run the tests it writes yourself. |
+| `.\scripts\qa-tester.cmd` | Opens the qa-tester against the QA app, starting the app if it is not running. Give it the screen, what it is for, its URL and the report name (e.g. `MKA-4-product-form.md`). The report lands in [`docs/qa/`](docs/qa/README.md). |
+| `.\scripts\qa-app.cmd` | Runs only the QA app at http://localhost:5130, to run the report's manual test cases or reproduce a finding. |
+
+Leave an agent with `/exit`. The qa-tester's browser opens in its own Edge
+window.
+
+The QA app is the app as it is published (frontend built and served by the
+backend, one port), with its own database in `C:\ProgramData\MarketApp-QA\`.
+That database keeps its data between sessions on purpose.
+
 ### Git hooks
 
 - **pre-commit** formats the backend and the frontend and re-stages the

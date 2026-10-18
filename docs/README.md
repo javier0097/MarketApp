@@ -5,6 +5,7 @@ These documents explain the decisions behind the code.
 
 - [Data model](data-model.md): entities, fields and why they are shaped this way.
 - [Development](development.md): tooling decisions the config files cannot explain.
+- [QA reports](qa/README.md): what the qa-tester found on each screen, and what was done about it.
 
 ## Opening the docs in Obsidian
 
