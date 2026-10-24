@@ -61,8 +61,16 @@ These describe how tests are written in this project, not how the code works.
 
 ### Backend (C#)
 
-- Tests go in `backend/MarketApp.Api.Tests`, namespace `MarketApp.Api.Tests`
-  plus the folder (e.g. `MarketApp.Api.Tests.Services`).
+- Tests go in `backend/MarketApp.Api.Tests`, in one folder per kind of test,
+  one file per class under test, named after it with `Tests`:
+  - `UnitTests/`: plain functions, no database (`BarcodeHelperTests.cs`).
+  - `ServiceTests/`: services against the test database (`ProductServiceTests.cs`).
+  - `ApiTests/`: HTTP requests to the running API (`ProductsApiTests.cs`).
+
+  Use exactly these folder names: a lint rule requires every class in a folder
+  named `Helpers`, `Services`, `Controllers` and the like to end with that
+  suffix. The namespace is `MarketApp.Api.Tests` plus the folder
+  (`MarketApp.Api.Tests.UnitTests`).
 - xUnit v3: `[Fact]`, `[Theory]` with `[InlineData]`, and the `Assert` class.
   No other assertion library.
 - Pass `TestContext.Current.CancellationToken` to every method that accepts a

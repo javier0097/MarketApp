@@ -17,21 +17,25 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   }
 
   if (response.ok) {
-    return response.json();
+    const body = await readJson<T>(response);
+    if (body !== null) {
+      return body;
+    }
+  } else {
+    const problem = await readJson<ProblemDetails>(response);
+    if (response.status === 400 && problem?.errors) {
+      throw new ValidationError(problem.errors);
+    }
+
+    if (response.status === 500 && problem?.title && problem.detail) {
+      throw new ApiError(`${problem.title} ${problem.detail}`);
+    }
   }
 
-  const problem = await readProblem(response);
-  if (response.status === 400 && problem?.errors) {
-    throw new ValidationError(problem.errors);
-  }
-
-  if (response.status === 500 && problem?.title && problem.detail) {
-    throw new ApiError(`${problem.title} ${problem.detail}`);
-  }
   throw new ApiError("Ocurrió un error inesperado.");
 }
 
-async function readProblem(response: Response): Promise<ProblemDetails | null> {
+async function readJson<T>(response: Response): Promise<T | null> {
   try {
     return await response.json();
   } catch {

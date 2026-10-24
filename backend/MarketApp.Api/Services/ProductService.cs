@@ -30,7 +30,7 @@ public class ProductService(MarketAppDbContext db, ILogger<ProductService> logge
         }
         else
         {
-            ValidateBarcode(code);
+            BarcodeHelper.Validate(code, nameof(request.Code));
         }
 
         var now = DateTime.UtcNow;
@@ -61,23 +61,5 @@ public class ProductService(MarketAppDbContext db, ILogger<ProductService> logge
 
         var lastNumber = lastCode is null ? 0 : int.Parse(lastCode[InternalCodePrefix.Length..]);
         return $"{InternalCodePrefix}{lastNumber + 1:D5}";
-    }
-
-    private static void ValidateBarcode(string code)
-    {
-        if (!code.All(char.IsAsciiDigit))
-        {
-            throw new FieldValidationException(nameof(CreateProductRequest.Code), "El código de barras solo puede tener números.");
-        }
-
-        if (code.Length is not (8 or 12 or 13 or 14))
-        {
-            throw new FieldValidationException(nameof(CreateProductRequest.Code), "El código de barras debe tener 8, 12, 13 o 14 dígitos.");
-        }
-
-        if (!BarcodeHelper.HasValidCheckDigit(code))
-        {
-            throw new FieldValidationException(nameof(CreateProductRequest.Code), "El código de barras no es válido. Revise que esté bien escrito o marque \"Sin código de barras\".");
-        }
     }
 }

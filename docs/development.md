@@ -22,6 +22,21 @@ compiled without it and its lint errors passed the push.
 
 How to run them is in the [root README](../README.md#tests).
 
+**Backend tests are grouped by kind**, one file per class under test, named
+after it with `Tests`:
+
+```
+MarketApp.Api.Tests/
+├── UnitTests/      plain functions, no database   (BarcodeHelperTests.cs)
+├── ServiceTests/   services against TestDatabase  (ProductServiceTests.cs)
+├── ApiTests/       HTTP requests through ApiFactory (ProductsApiTests.cs)
+└── Support/        TestDatabase, ApiFactory
+```
+
+The folders are not named after the API's (`Helpers/`, `Services/`): the
+naming rules in `.editorconfig` apply by folder, so every class in a
+`Services/` folder, tests included, would need the `Service` suffix.
+
 **xUnit v3 needs the new test platform.** xUnit v3 runs on
 Microsoft.Testing.Platform, and on the .NET 10 SDK `dotnet test` only runs it
 when `global.json` (repo root) opts in. That is also why `dotnet test` takes
