@@ -1,0 +1,16 @@
+{
+  "claudeMdExcludes": ["**/CLAUDE.md"],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/test-files-only.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}

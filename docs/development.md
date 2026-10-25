@@ -77,16 +77,23 @@ expected. They stay as a separate check, done at the end.
 
 **Neither agent can see the code.**
 
-- The scripts turn auto memory off and pass `.claude/isolated-agent.settings.json`,
+- The scripts turn auto memory off and pass each agent's own settings file
+  (`.claude/test-writer.settings.json`, `.claude/qa-tester.settings.json`),
   which skips every `CLAUDE.md`. The agents' own `omitClaudeMd` is not enough:
   Claude Code ignores it when an agent runs as the main session (`--agent`).
-- The test-writer can only create files. The qa-tester has the browser, web
-  search and file creation; the browser tools that run code inside the page are
-  removed, so it can only use the screen.
-- Their prompts describe what they need instead of letting them read it: the
-  test conventions and the `Support/` helpers (test-writer), and what any user
-  knows about the store (qa-tester). **If you change `Support/`, the lint rules
-  or how tests are written, update `.claude/agents/test-writer.md` too.**
+- The test-writer can read, edit and create test files only. A PreToolUse hook
+  (`scripts/hooks/test-files-only.mjs`, set up in
+  `.claude/test-writer.settings.json`) runs before every Read, Edit and Write
+  and lets through only `backend/MarketApp.Api.Tests/` and
+  `frontend/src/**/*.test.ts`; any other path is blocked, so it never sees the
+  production code. Reading the existing tests lets it extend them and skip what
+  is already covered; its prompt treats them as coverage, not as the rules.
+- The qa-tester has the browser, web search and file creation; the browser
+  tools that run code inside the page are removed, so it can only use the
+  screen.
+- The test conventions and what any user knows about the store are written in
+  the prompts. **If you change the lint rules or how tests are written, update
+  `.claude/agents/test-writer.md` too.**
 
 **The qa-tester's browser** is Playwright, set up in `.claude/qa-tester.mcp.json`:
 Microsoft Edge, a profile kept in memory, and only the QA app allowed. The

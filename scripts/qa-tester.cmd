@@ -24,7 +24,7 @@ exit /b 1
 
 :run
 set CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
-claude --agent qa-tester --settings .claude\isolated-agent.settings.json --mcp-config .claude\qa-tester.mcp.json --strict-mcp-config %*
+claude --agent qa-tester --settings .claude\qa-tester.settings.json --mcp-config .claude\qa-tester.mcp.json --strict-mcp-config %*
 
 if not defined STARTED_APP goto :eof
 rem Found through the port, not the window title: npm and dotnet change the title while they run.

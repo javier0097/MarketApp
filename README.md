@@ -82,6 +82,10 @@ CLI installed, signed in and on the `PATH` (`claude --version` must work).
 Leave an agent with `/exit`. The qa-tester's browser opens in its own Edge
 window.
 
+To continue an earlier session, run the same script with `--resume` (e.g.
+`.\scripts\test-writer.cmd --resume`) and pick it from the list. Always resume
+through the script: it is what keeps the agent without `CLAUDE.md` or memory.
+
 The QA app is the app as it is published (frontend built and served by the
 backend, one port), with its own database in `C:\ProgramData\MarketApp-QA\`.
 That database keeps its data between sessions on purpose.
