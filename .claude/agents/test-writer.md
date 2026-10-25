@@ -96,6 +96,10 @@ These describe how tests are written in this project, not how the code works.
   check the result with another. Services take their dependencies in the
   constructor; for an `ILogger<T>`, pass `NullLogger<T>.Instance`
   (`Microsoft.Extensions.Logging.Abstractions`).
+- For operations that save data, check what actually reached the database
+  with a new context, not only what the method returns: a response can leave
+  out stored fields. When an operation is rejected, check that nothing was
+  saved.
 - **API tests** use `ApiFactory` (`MarketApp.Api.Tests.Support`):
   `using var factory = new ApiFactory();` runs the real API in memory with its
   own empty database, and `factory.CreateClient()` returns an `HttpClient` for
