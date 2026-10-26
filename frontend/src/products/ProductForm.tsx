@@ -39,6 +39,7 @@ function ProductForm() {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const priceInputRef = useRef<HTMLInputElement>(null);
   const codeInputRef = useRef<HTMLInputElement>(null);
+  const typedCodeRef = useRef("");
 
   function clearFieldError(field: string) {
     setErrors((current) => ({ ...current, [field]: [] }));
@@ -65,10 +66,11 @@ function ProductForm() {
     setWithoutBarcode(checked);
     clearFieldError("code");
     if (!checked) {
-      setCode("");
+      setCode(typedCodeRef.current);
       return;
     }
 
+    typedCodeRef.current = code;
     try {
       const next = await getNextInternalCode();
       setCode(next.code);

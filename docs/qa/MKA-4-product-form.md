@@ -290,7 +290,7 @@ To be filled in by the developer after triage.
 | --- | --- | --- |
 | F1 | discarded | Users check the screen before saving, the confirmation shows the saved price, and prices above Bs 1.000 are rare in the store |
 | F2 | fixed | The API accepts prices from Bs 0,01 to Bs 9.999,99 only |
-| F3 | | |
+| F3 | fixed | Unticking "Sin código de barras" brings back the code that was there before ticking it |
 | F4 | | |
 | F5 | | |
 | F6 | | |
