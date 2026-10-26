@@ -203,6 +203,11 @@ them.
 - Tests and QA are done by the test-writer and qa-tester agents, in sessions
   of their own that cannot see the code (`docs/development.md`, "Testing
   agents"). A session that builds a feature does not write its tests.
+  The only exception is a small change whose expected values all come from a
+  rule the developer stated (a new limit, a changed message), never from the
+  code: the session may update those tests only when the developer asks for it
+  or approves it for that specific change, after confirming the boundary values
+  it will test. It is never the session's own decision.
 
 ### Git
 

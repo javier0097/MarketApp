@@ -137,6 +137,7 @@ function ProductForm() {
           decimalSeparator=","
           decimalScale={2}
           allowNegative={false}
+          isAllowed={({ value }) => value.split(".")[0].length <= 7}
           hideControls
           value={price}
           onChange={(value) => {

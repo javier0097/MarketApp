@@ -9,6 +9,7 @@ public class ProductsApiTests
 {
     private const string ProductsUrl = "/api/products";
     private const string NextInternalCodeUrl = "/api/products/next-internal-code";
+    private const string PriceRangeMessage = "El precio de venta debe estar entre Bs 0,01 y Bs 9.999,99.";
     private const string InvalidBarcodeMessage =
         "El código de barras no es válido. Revise que esté bien escrito o marque \"Sin código de barras\".";
 
@@ -43,6 +44,17 @@ public class ProductsApiTests
         using var client = factory.CreateClient();
 
         using var response = await PostProductAsync(client, ValidBarcode, "Leche entera 1 L", 1);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_accepts_the_highest_sale_price()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+
+        using var response = await PostProductAsync(client, ValidBarcode, "Leche entera 1 L", 999999);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
@@ -86,7 +98,22 @@ public class ProductsApiTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var (key, messages) = Assert.Single(body.Errors);
         Assert.Equal("salePrice", key);
-        Assert.Equal(["El precio de venta debe ser mayor a cero."], messages);
+        Assert.Equal([PriceRangeMessage], messages);
+    }
+
+    [Fact]
+    public async Task Create_returns_400_when_the_sale_price_is_above_the_highest()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+
+        using var response = await PostProductAsync(client, ValidBarcode, "Leche entera 1 L", 1000000);
+        var body = await ReadValidationProblemAsync(response);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var (key, messages) = Assert.Single(body.Errors);
+        Assert.Equal("salePrice", key);
+        Assert.Equal([PriceRangeMessage], messages);
     }
 
     [Fact]
@@ -119,7 +146,7 @@ public class ProductsApiTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var (key, messages) = Assert.Single(body.Errors);
         Assert.Equal("salePrice", key);
-        Assert.Equal(["El precio de venta debe ser mayor a cero."], messages);
+        Assert.Equal([PriceRangeMessage], messages);
     }
 
     [Fact]

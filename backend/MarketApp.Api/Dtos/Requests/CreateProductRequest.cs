@@ -11,6 +11,6 @@ public record CreateProductRequest
     public string? Name { get; init; }
 
     [Required(ErrorMessage = "Ingrese el precio de venta.")]
-    [Range(1, int.MaxValue, ErrorMessage = "El precio de venta debe ser mayor a cero.")]
+    [Range(1, 999999, ErrorMessage = "El precio de venta debe estar entre Bs 0,01 y Bs 9.999,99.")]
     public int? SalePrice { get; init; }
 }
