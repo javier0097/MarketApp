@@ -286,22 +286,22 @@ Scenarios from the web research that passed: a currency symbol typed into the pr
 
 To be filled in by the developer after triage.
 
-| Finding | Decision (fixed / ticket / discarded) | Ticket or reason |
-| --- | --- | --- |
-| F1 | discarded | Users check the screen before saving, the confirmation shows the saved price, and prices above Bs 1.000 are rare in the store |
-| F2 | fixed | The API accepts prices from Bs 0,01 to Bs 9.999,99 only |
-| F3 | fixed | Unticking "Sin código de barras" brings back the code that was there before ticking it |
-| F4 | | |
-| F5 | | |
-| F6 | | |
-| F7 | | |
-| F8 | | |
-| F9 | fixed | The price field takes at most 7 whole digits, so a too-high price gets the range message |
-| F10 | | |
-| F11 | | |
-| F12 | | |
-| F13 | | |
-| F14 | | |
-| F15 | | |
-| F16 | | |
-| F17 | | |
+| Finding | Decision (fixed / ticket / discarded) | Ticket or reason                                                                                                                              |
+| ------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1      | discarded                             | Users check the screen before saving, the confirmation shows the saved price, and prices above Bs 1.000 are rare in the store                 |
+| F2      | fixed                                 | The API accepts prices from Bs 0,01 to Bs 9.999,99 only                                                                                       |
+| F3      | fixed                                 | Unticking "Sin código de barras" brings back the code that was there before ticking it                                                        |
+| F4      | discarded                             | The scanner is configured to send nothing after the code, so no Tab moves the focus to the checkbox; unticking it brings the code back (F3)   |
+| F5      | discarded                             | The scanner is configured to send nothing after the code, so it adds no Enter; when in doubt, the product list will show whether it was saved |
+| F6      | discarded                             | Knowing that a product already has the code is enough; which product it is does not matter when creating one                                  |
+| F7      | ticket                                | [#11 List products](https://github.com/javier0097/MarketApp/issues/11); editing comes after the MVP                                           |
+| F8      | discarded                             | The store's only scanner is configured to always send a code in the same form; duplicates under another code are handled in F12              |
+| F9      | fixed                                 | The price field takes at most 7 whole digits, so a too-high price gets the range message                                                      |
+| F10     | fixed                                 | When the internal code is rejected, the checkbox tells the user to untick and tick it again to get a new one                                  |
+| F11     |                                       |                                                                                                                                               |
+| F12     |                                       |                                                                                                                                               |
+| F13     |                                       |                                                                                                                                               |
+| F14     |                                       |                                                                                                                                               |
+| F15     |                                       |                                                                                                                                               |
+| F16     |                                       |                                                                                                                                               |
+| F17     |                                       |                                                                                                                                               |

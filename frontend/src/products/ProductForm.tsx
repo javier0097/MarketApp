@@ -166,6 +166,11 @@ function ProductForm() {
             onChange={(event) =>
               handleWithoutBarcodeChange(event.currentTarget.checked)
             }
+            error={
+              withoutBarcode &&
+              errors.code?.[0] &&
+              "Desmárquela y vuelva a marcarla para obtener un código nuevo."
+            }
           />
         </Stack>
         <Button type="submit" loading={saving}>
