@@ -298,10 +298,10 @@ To be filled in by the developer after triage.
 | F8      | discarded                             | The store's only scanner is configured to always send a code in the same form; duplicates under another code are handled in F12              |
 | F9      | fixed                                 | The price field takes at most 7 whole digits, so a too-high price gets the range message                                                      |
 | F10     | fixed                                 | When the internal code is rejected, the checkbox tells the user to untick and tick it again to get a new one                                  |
-| F11     |                                       |                                                                                                                                               |
-| F12     |                                       |                                                                                                                                               |
-| F13     |                                       |                                                                                                                                               |
-| F14     |                                       |                                                                                                                                               |
-| F15     |                                       |                                                                                                                                               |
+| F11     | discarded                             | A code scanned into "Nombre" leaves the name to be typed elsewhere, so the user notices; the scanner sends no Enter, so nothing is submitted |
+| F12     | ticket                                | [#12 Show similar products while typing the name](https://github.com/javier0097/MarketApp/issues/12); an exact name check would miss variants |
+| F13     | discarded                             | A product never has a negative price, so the field never accepts the minus sign; the value left is visible on screen                         |
+| F14     | discarded                             | By design a typed internal code is accepted only if it is exactly the next one, the same code the checkbox gives                             |
+| F15     | fixed                                 | The name is limited to 200 characters with a message and a character counter, and the confirmation wraps long text                   |
 | F16     |                                       |                                                                                                                                               |
 | F17     |                                       |                                                                                                                                               |

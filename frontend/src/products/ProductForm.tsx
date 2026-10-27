@@ -19,6 +19,8 @@ type FieldErrors = Record<string, string[]>;
 
 const unexpectedErrorMessage = "Ocurrió un error inesperado.";
 
+const nameMaxLength = 200;
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     return error.message;
@@ -116,7 +118,11 @@ function ProductForm() {
       <Stack gap="md">
         {generalError && <Alert color="red">{generalError}</Alert>}
         {lastSaved && (
-          <Alert color="green" title="Producto guardado">
+          <Alert
+            color="green"
+            title="Producto guardado"
+            style={{ overflowWrap: "anywhere" }}
+          >
             {lastSaved.name} · {lastSaved.code} ·{" "}
             {formatMoney(lastSaved.salePrice)}
           </Alert>
@@ -129,6 +135,8 @@ function ProductForm() {
             setName(event.currentTarget.value);
             clearFieldError("name");
           }}
+          description={`${name.length}/${nameMaxLength}`}
+          inputWrapperOrder={["label", "input", "description", "error"]}
           error={errors.name?.[0]}
           autoFocus
         />

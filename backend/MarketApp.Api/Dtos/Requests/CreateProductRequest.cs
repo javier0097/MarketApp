@@ -8,6 +8,7 @@ public record CreateProductRequest
     public string? Code { get; init; }
 
     [Required(ErrorMessage = "Ingrese el nombre del producto.")]
+    [MaxLength(200, ErrorMessage = "El nombre no puede tener más de 200 caracteres.")]
     public string? Name { get; init; }
 
     [Required(ErrorMessage = "Ingrese el precio de venta.")]

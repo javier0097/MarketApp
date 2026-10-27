@@ -117,6 +117,32 @@ public class ProductsApiTests
     }
 
     [Fact]
+    public async Task Create_accepts_a_name_of_200_characters()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+
+        using var response = await PostProductAsync(client, ValidBarcode, new string('A', 200), 1250);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_returns_400_when_the_name_is_longer_than_200_characters()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+
+        using var response = await PostProductAsync(client, ValidBarcode, new string('A', 201), 1250);
+        var body = await ReadValidationProblemAsync(response);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var (key, messages) = Assert.Single(body.Errors);
+        Assert.Equal("name", key);
+        Assert.Equal(["El nombre no puede tener más de 200 caracteres."], messages);
+    }
+
+    [Fact]
     public async Task Create_returns_every_error_when_several_fields_fail()
     {
         using var factory = new ApiFactory();
