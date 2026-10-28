@@ -304,4 +304,19 @@ To be filled in by the developer after triage.
 | F14     | discarded                             | By design a typed internal code is accepted only if it is exactly the next one, the same code the checkbox gives                             |
 | F15     | fixed                                 | The name is limited to 200 characters with a message and a character counter, and the confirmation wraps long text                   |
 | F16     | fixed                                 | The price field shows two decimals once the user leaves it; the thousands separator is not added to the field                                |
-| F17     |                                       |                                                                                                                                               |
+| F17     | discarded                             | "Código" covers barcodes and internal codes, and "código de barras" is used only in barcode errors; a reload loses at most one product's data |
+
+## Manual test results
+
+To be filled in by the developer after running the manual test cases.
+
+| Case | Result (passed / failed / not run) | Decision (fixed / ticket / discarded) | Notes, ticket or reason                                                                                                |
+| ---- | ---------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| M1   | not run                            | discarded                             | The scanner is configured to send nothing after the code, so it never sends Enter; the user saves with their own Enter |
+| M2   | not run                            | discarded                             | The system assumes a scanner with no prefix or suffix, which is how the store's scanner is configured                  |
+| M3   | not run                            | discarded                             | Covered by F2 (a code scanned into the price is rejected) and F11 (a code scanned into "Nombre" is not submitted)      |
+| M4   | not run                            | discarded                             | Barcodes are digits only, and the digit keys are the same in the US and Spanish (Latin America) layouts                |
+| M5   | passed                             |                                       | The keypad decimal key, pasting and autocomplete all give the right price                                              |
+| M6   | passed                             |                                       | Run on the published app: the connection message is shown, the form keeps the data, and the retry saves once.          |
+| M7   | passed                             |                                       | While saving, the button is disabled, so neither a click nor Enter submits again; one product is saved                 |
+| M8   | not run                            | discarded                             | SQLite saves each product in a transaction, so it is saved whole or not at all; the half-filled form was discarded in F17 |

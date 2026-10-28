@@ -116,6 +116,13 @@ To be filled in by the developer after triage.
 
 | Finding | Decision (fixed / ticket / discarded) | Ticket or reason |
 | --- | --- | --- |
+
+## Manual test results
+
+To be filled in by the developer after running the manual test cases.
+
+| Case | Result (passed / failed / not run) | Decision (fixed / ticket / discarded) | Notes, ticket or reason |
+| --- | --- | --- | --- |
 ```
 
 Then reply in the developer's language with the summary and the path of the

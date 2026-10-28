@@ -10,6 +10,9 @@ manual test cases for what the agent cannot test (such as the physical barcode
 scanner).
 
 Its **Resolution** table is filled in at triage: for each finding, whether it
-was fixed, moved to a ticket (with its number) or discarded, and why.
+was fixed, moved to a ticket (with its number) or discarded, and why. The
+**Manual test results** table is filled in after running the manual test
+cases: whether each one passed, failed or was not run, and for a failure, the
+same decision as a finding.
 
 How to run a session: [root README](../../README.md#testing-agents).
