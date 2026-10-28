@@ -303,5 +303,5 @@ To be filled in by the developer after triage.
 | F13     | discarded                             | A product never has a negative price, so the field never accepts the minus sign; the value left is visible on screen                         |
 | F14     | discarded                             | By design a typed internal code is accepted only if it is exactly the next one, the same code the checkbox gives                             |
 | F15     | fixed                                 | The name is limited to 200 characters with a message and a character counter, and the confirmation wraps long text                   |
-| F16     |                                       |                                                                                                                                               |
+| F16     | fixed                                 | The price field shows two decimals once the user leaves it; the thousands separator is not added to the field                                |
 | F17     |                                       |                                                                                                                                               |

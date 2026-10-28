@@ -154,6 +154,11 @@ function ProductForm() {
             setPrice(value);
             clearFieldError("salePrice");
           }}
+          onBlur={() => {
+            if (price !== "") {
+              setPrice(Number(price).toFixed(2));
+            }
+          }}
           error={errors.salePrice?.[0]}
         />
         <Stack gap="xs">
