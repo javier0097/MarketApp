@@ -48,10 +48,11 @@ PostgreSQL (they run background services), the Visual Studio React template
 /
 ├── backend/
 │   ├── MarketApp.Api/
-│   ├── MarketApp.Api.Tests/   # not created yet
+│   ├── MarketApp.Api.Tests/
 │   └── MarketApp.slnx
 ├── frontend/              # Vite project, own conventions
 ├── docs/
+├── scripts/               # start the testing agents and the QA app
 └── README.md
 ```
 
@@ -199,6 +200,14 @@ them.
   halfway, no connection, duplicate data.
 - Test data must be realistic in shape and volume: three products hide what
   three hundred show.
+- Tests and QA are done by the test-writer and qa-tester agents, in sessions
+  of their own that cannot see the code (`docs/development.md`, "Testing
+  agents"). A session that builds a feature does not write its tests.
+  The only exception is a small change whose expected values all come from a
+  rule the developer stated (a new limit, a changed message), never from the
+  code: the session may update those tests only when the developer asks for it
+  or approves it for that specific change, after confirming the boundary values
+  it will test. It is never the session's own decision.
 
 ### Git
 
@@ -261,4 +270,8 @@ dotnet run --project backend/MarketApp.Api
 
 # Frontend (dev)
 npm run dev --prefix frontend
+
+# Tests (dotnet test needs --solution or --project: the repo uses Microsoft.Testing.Platform)
+dotnet test --solution backend/MarketApp.slnx
+npm test --prefix frontend
 ```

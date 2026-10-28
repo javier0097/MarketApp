@@ -19,6 +19,8 @@ type FieldErrors = Record<string, string[]>;
 
 const unexpectedErrorMessage = "Ocurrió un error inesperado.";
 
+const nameMaxLength = 200;
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     return error.message;
@@ -39,6 +41,7 @@ function ProductForm() {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const priceInputRef = useRef<HTMLInputElement>(null);
   const codeInputRef = useRef<HTMLInputElement>(null);
+  const typedCodeRef = useRef("");
 
   function clearFieldError(field: string) {
     setErrors((current) => ({ ...current, [field]: [] }));
@@ -65,10 +68,11 @@ function ProductForm() {
     setWithoutBarcode(checked);
     clearFieldError("code");
     if (!checked) {
-      setCode("");
+      setCode(typedCodeRef.current);
       return;
     }
 
+    typedCodeRef.current = code;
     try {
       const next = await getNextInternalCode();
       setCode(next.code);
@@ -114,7 +118,11 @@ function ProductForm() {
       <Stack gap="md">
         {generalError && <Alert color="red">{generalError}</Alert>}
         {lastSaved && (
-          <Alert color="green" title="Producto guardado">
+          <Alert
+            color="green"
+            title="Producto guardado"
+            style={{ overflowWrap: "anywhere" }}
+          >
             {lastSaved.name} · {lastSaved.code} ·{" "}
             {formatMoney(lastSaved.salePrice)}
           </Alert>
@@ -127,6 +135,8 @@ function ProductForm() {
             setName(event.currentTarget.value);
             clearFieldError("name");
           }}
+          description={`${name.length}/${nameMaxLength}`}
+          inputWrapperOrder={["label", "input", "description", "error"]}
           error={errors.name?.[0]}
           autoFocus
         />
@@ -137,11 +147,17 @@ function ProductForm() {
           decimalSeparator=","
           decimalScale={2}
           allowNegative={false}
+          isAllowed={({ value }) => value.split(".")[0].length <= 7}
           hideControls
           value={price}
           onChange={(value) => {
             setPrice(value);
             clearFieldError("salePrice");
+          }}
+          onBlur={() => {
+            if (price !== "") {
+              setPrice(Number(price).toFixed(2));
+            }
           }}
           error={errors.salePrice?.[0]}
         />
@@ -162,6 +178,11 @@ function ProductForm() {
             checked={withoutBarcode}
             onChange={(event) =>
               handleWithoutBarcodeChange(event.currentTarget.checked)
+            }
+            error={
+              withoutBarcode &&
+              errors.code?.[0] &&
+              "Desmárquela y vuelva a marcarla para obtener un código nuevo."
             }
           />
         </Stack>

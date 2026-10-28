@@ -1,2 +1,5 @@
 # Overrides each machine's core.autocrlf so line endings do not depend on local git config
 * text=auto eol=lf
+
+# Windows batch files need CRLF line endings
+*.cmd text eol=crlf

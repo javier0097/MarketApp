@@ -37,3 +37,6 @@ backend/MarketApp.Api/wwwroot/
 
 # Windows (Thumbs.db is already covered by *.db)
 [Dd]esktop.ini
+
+# Snapshots and screenshots the qa-tester browser saves
+.playwright-mcp/

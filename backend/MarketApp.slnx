@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="MarketApp.Api.Tests/MarketApp.Api.Tests.csproj" />
   <Project Path="MarketApp.Api/MarketApp.Api.csproj" />
 </Solution>
