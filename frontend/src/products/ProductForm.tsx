@@ -7,7 +7,11 @@ import {
   Stack,
   TextInput,
 } from "@mantine/core";
-import { ApiError, ValidationError } from "../api/errors.ts";
+import {
+  getErrorMessage,
+  unexpectedErrorMessage,
+  ValidationError,
+} from "../api/errors.ts";
 import {
   createProduct,
   getNextInternalCode,
@@ -17,17 +21,7 @@ import { formatMoney, toCents } from "../lib/money.ts";
 
 type FieldErrors = Record<string, string[]>;
 
-const unexpectedErrorMessage = "Ocurrió un error inesperado.";
-
 const nameMaxLength = 200;
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    return error.message;
-  }
-  console.error(error);
-  return unexpectedErrorMessage;
-}
 
 function ProductForm() {
   const [name, setName] = useState("");
@@ -77,7 +71,6 @@ function ProductForm() {
       const next = await getNextInternalCode();
       setCode(next.code);
     } catch (error) {
-      // Unchecked so the code field is editable again
       setWithoutBarcode(false);
       setGeneralError(getErrorMessage(error));
     }
