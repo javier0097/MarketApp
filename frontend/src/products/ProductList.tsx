@@ -1,13 +1,23 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Loader, Stack, Table, Text } from "@mantine/core";
+import {
+  Alert,
+  Button,
+  Loader,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+} from "@mantine/core";
 import { getErrorMessage } from "../api/errors.ts";
 import { getProducts, type ProductResponse } from "../api/products.ts";
 import { formatDateTime } from "../lib/dates.ts";
 import { formatMoney } from "../lib/money.ts";
+import { normalizeForSearch } from "../lib/search.ts";
 
 function ProductList() {
   const [products, setProducts] = useState<ProductResponse[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -48,6 +58,37 @@ function ProductList() {
     );
   }
 
+  const searchTerm = search.trim();
+  const normalizedSearch = normalizeForSearch(searchTerm);
+  const filteredProducts = products.filter(
+    (product) =>
+      normalizeForSearch(product.name).includes(normalizedSearch) ||
+      normalizeForSearch(product.code).includes(normalizedSearch),
+  );
+
+  return (
+    <Stack gap="lg">
+      <TextInput
+        label="Buscar"
+        description="Por nombre o código"
+        value={search}
+        onChange={(event) => setSearch(event.currentTarget.value)}
+        maw={400}
+        autoFocus
+      />
+      {filteredProducts.length === 0 ? (
+        <Text>
+          Ningún producto coincide con «{searchTerm}». Revise lo escrito o
+          busque por otra parte del nombre o del código.
+        </Text>
+      ) : (
+        <ProductTable products={filteredProducts} />
+      )}
+    </Stack>
+  );
+}
+
+function ProductTable({ products }: { products: ProductResponse[] }) {
   return (
     <Table striped>
       <Table.Thead>
