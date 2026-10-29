@@ -22,9 +22,9 @@ business software. Not developers.
 - No multi-tenancy, no public users, no SEO.
 - Keep it simple. This is a small internal app, not a platform.
 
-**Current scope (MVP):** create products, list products, record inventory
-inbound movements. Nothing else. Point of sale, search, edit, auth, reports
-and finances come later — do not build ahead.
+**Scope:** set by the tickets on the project board. Build what the current
+ticket asks for and nothing ahead of it; features without a ticket (point of
+sale, editing, auth, reports, finances…) wait for their own.
 
 ## Stack
 

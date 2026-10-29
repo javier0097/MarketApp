@@ -9,6 +9,13 @@ namespace MarketApp.Api.Controllers;
 [Route("api/products")]
 public class ProductsController(IProductService productService) : ControllerBase
 {
+    [HttpGet]
+    public async Task<IActionResult> GetActive()
+    {
+        var products = await productService.GetActiveAsync();
+        return Ok(products);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create(CreateProductRequest request)
     {

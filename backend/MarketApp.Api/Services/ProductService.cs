@@ -48,7 +48,17 @@ public class ProductService(MarketAppDbContext db, ILogger<ProductService> logge
         await db.SaveChangesAsync();
         logger.LogInformation("Product {ProductId} created: {Code} {Name} {SalePrice}", product.Id, product.Code, product.Name, product.SalePrice);
 
-        return new ProductResponse(product.Id, product.Code, product.Name, product.SalePrice);
+        return new ProductResponse(product.Id, product.Code, product.Name, product.SalePrice, product.CreatedAt);
+    }
+
+    public async Task<List<ProductResponse>> GetActiveAsync()
+    {
+        return await db.Products
+            .Where(p => p.IsActive)
+            .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id)
+            .Select(p => new ProductResponse(p.Id, p.Code, p.Name, p.SalePrice, p.CreatedAt))
+            .ToListAsync();
     }
 
     public async Task<string> GetNextInternalCodeAsync()
