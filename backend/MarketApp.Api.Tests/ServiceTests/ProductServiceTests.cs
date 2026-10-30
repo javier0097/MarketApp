@@ -398,6 +398,98 @@ public class ProductServiceTests
         Assert.Equal(2, count);
     }
 
+    // ---------- GetActiveAsync ----------
+
+    [Fact]
+    public async Task Returns_an_empty_list_when_there_are_no_products()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        Assert.Empty(products);
+    }
+
+    [Fact]
+    public async Task Returns_an_empty_list_when_all_products_are_inactive()
+    {
+        using var database = new TestDatabase();
+        await SeedProductsAsync(
+            database,
+            NewProduct("TMV00001", isActive: false),
+            NewProduct("TMV00002", isActive: false));
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        Assert.Empty(products);
+    }
+
+    [Fact]
+    public async Task Returns_only_the_active_products()
+    {
+        using var database = new TestDatabase();
+        await SeedProductsAsync(
+            database,
+            NewProduct("TMV00001"),
+            NewProduct("TMV00002", isActive: false),
+            NewProduct("TMV00003"));
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        var codes = products.Select(product => product.Code).Order().ToList();
+        Assert.Equal(["TMV00001", "TMV00003"], codes);
+    }
+
+    [Fact]
+    public async Task Orders_the_products_from_the_highest_to_the_lowest_id()
+    {
+        using var database = new TestDatabase();
+        var seeded = new[] { NewProduct("TMV00001"), NewProduct("TMV00002"), NewProduct("TMV00003") };
+        await SeedProductsAsync(database, seeded);
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        var expectedIds = seeded.Select(product => product.Id).OrderDescending().ToList();
+        var ids = products.Select(product => product.Id).ToList();
+        Assert.Equal(expectedIds, ids);
+    }
+
+    [Fact]
+    public async Task Returns_the_id_code_name_sale_price_and_creation_date_of_the_product()
+    {
+        using var database = new TestDatabase();
+        var createdAt = new DateTime(2026, 5, 15, 9, 30, 0, DateTimeKind.Utc);
+        var seeded = new Product
+        {
+            Code = ValidBarcode,
+            Name = "Leche entera 1 L",
+            SalePrice = 1250,
+            CreatedAt = createdAt,
+            IsActive = true,
+        };
+        await SeedProductsAsync(database, seeded);
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        var product = Assert.Single(products);
+        Assert.Equal(seeded.Id, product.Id);
+        Assert.Equal(ValidBarcode, product.Code);
+        Assert.Equal("Leche entera 1 L", product.Name);
+        Assert.Equal(1250, product.SalePrice);
+        Assert.Equal(createdAt, product.CreatedAt);
+        Assert.Equal(DateTimeKind.Utc, product.CreatedAt.Kind);
+    }
+
     private static Product NewProduct(string code, bool isActive = true) =>
         new() { Name = $"Producto {code}", Code = code, IsActive = isActive };
 

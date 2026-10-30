@@ -2,6 +2,7 @@ using MarketApp.Api.Tests.Support;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 
 namespace MarketApp.Api.Tests.ApiTests;
 
@@ -250,6 +251,87 @@ public class ProductsApiTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    // ---------- GET /api/products ----------
+
+    [Fact]
+    public async Task List_returns_200_with_an_empty_list_when_there_are_no_products()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+
+        var products = await GetProductsAsync(client);
+
+        Assert.Empty(products);
+    }
+
+    [Fact]
+    public async Task List_returns_200_with_the_fields_of_a_created_product()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        var before = DateTime.UtcNow;
+        var id = await CreateProductAsync(client, ValidBarcode, "Leche entera 1 L", 1250);
+        var after = DateTime.UtcNow;
+
+        var products = await GetProductsAsync(client);
+
+        var product = Assert.Single(products);
+        Assert.Equal(id, product.Id);
+        Assert.Equal(ValidBarcode, product.Code);
+        Assert.Equal("Leche entera 1 L", product.Name);
+        Assert.Equal(1250, product.SalePrice);
+        Assert.InRange(product.CreatedAt, before, after);
+    }
+
+    [Fact]
+    public async Task List_sends_the_creation_date_in_utc()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        await CreateProductAsync(client, ValidBarcode, "Leche entera 1 L", 1250);
+
+        using var response = await client.GetAsync(ProductsUrl, TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+        var createdAt = body[0].GetProperty("createdAt").GetString();
+        Assert.NotNull(createdAt);
+        Assert.EndsWith("Z", createdAt);
+    }
+
+    [Fact]
+    public async Task List_returns_the_products_from_the_last_created_to_the_first()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        var first = await CreateProductAsync(client, "TMV00001", "Arroz 1 kg", 1250);
+        var second = await CreateProductAsync(client, "TMV00002", "Azúcar 1 kg", 1100);
+        var third = await CreateProductAsync(client, "TMV00003", "Fideos 500 g", 800);
+
+        var products = await GetProductsAsync(client);
+
+        var ids = products.Select(product => product.Id).ToList();
+        Assert.Equal([third, second, first], ids);
+    }
+
+    private static async Task<int> CreateProductAsync(HttpClient client, string code, string name, int salePrice)
+    {
+        using var response = await PostProductAsync(client, code, name, salePrice);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ProductBody>(TestContext.Current.CancellationToken);
+        Assert.NotNull(body);
+        return body.Id;
+    }
+
+    private static async Task<List<ProductBody>> GetProductsAsync(HttpClient client)
+    {
+        using var response = await client.GetAsync(ProductsUrl, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<List<ProductBody>>(
+            TestContext.Current.CancellationToken);
+        Assert.NotNull(body);
+        return body;
+    }
+
     private static Task<HttpResponseMessage> PostProductAsync(HttpClient client, string code, string name, int salePrice) =>
         client.PostAsJsonAsync(
             ProductsUrl,
@@ -279,7 +361,7 @@ public class ProductsApiTests
         return body;
     }
 
-    private sealed record ProductBody(int Id, string Code, string Name, int SalePrice);
+    private sealed record ProductBody(int Id, string Code, string Name, int SalePrice, DateTime CreatedAt);
 
     private sealed record ValidationProblemBody(Dictionary<string, string[]> Errors);
 
