@@ -463,16 +463,17 @@ public class ProductServiceTests
     }
 
     [Fact]
-    public async Task Returns_the_id_code_name_sale_price_and_creation_date_of_the_product()
+    public async Task Returns_the_id_code_name_sale_price_and_update_date_of_the_product()
     {
         using var database = new TestDatabase();
-        var createdAt = new DateTime(2026, 5, 15, 9, 30, 0, DateTimeKind.Utc);
+        var updatedAt = new DateTime(2026, 5, 15, 9, 30, 0, DateTimeKind.Utc);
         var seeded = new Product
         {
             Code = ValidBarcode,
             Name = "Leche entera 1 L",
             SalePrice = 1250,
-            CreatedAt = createdAt,
+            CreatedAt = new DateTime(2026, 5, 1, 8, 0, 0, DateTimeKind.Utc),
+            UpdatedAt = updatedAt,
             IsActive = true,
         };
         await SeedProductsAsync(database, seeded);
@@ -486,8 +487,8 @@ public class ProductServiceTests
         Assert.Equal(ValidBarcode, product.Code);
         Assert.Equal("Leche entera 1 L", product.Name);
         Assert.Equal(1250, product.SalePrice);
-        Assert.Equal(createdAt, product.CreatedAt);
-        Assert.Equal(DateTimeKind.Utc, product.CreatedAt.Kind);
+        Assert.Equal(updatedAt, product.UpdatedAt);
+        Assert.Equal(DateTimeKind.Utc, product.UpdatedAt.Kind);
     }
 
     private static Product NewProduct(string code, bool isActive = true) =>
@@ -500,10 +501,10 @@ public class ProductServiceTests
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
-    private static CreateProductRequest NewRequest(string code, string name = "Arroz 1 kg", int salePrice = 1250) =>
+    private static SaveProductRequest NewRequest(string code, string name = "Arroz 1 kg", int salePrice = 1250) =>
         new() { Code = code, Name = name, SalePrice = salePrice };
 
-    private static async Task<ProductResponse> CreateProductAsync(TestDatabase database, CreateProductRequest request)
+    private static async Task<ProductResponse> CreateProductAsync(TestDatabase database, SaveProductRequest request)
     {
         using var context = database.CreateContext();
         var service = new ProductService(context, NullLogger<ProductService>.Instance);

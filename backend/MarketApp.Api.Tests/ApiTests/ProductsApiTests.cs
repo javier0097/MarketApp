@@ -280,11 +280,11 @@ public class ProductsApiTests
         Assert.Equal(ValidBarcode, product.Code);
         Assert.Equal("Leche entera 1 L", product.Name);
         Assert.Equal(1250, product.SalePrice);
-        Assert.InRange(product.CreatedAt, before, after);
+        Assert.InRange(product.UpdatedAt, before, after);
     }
 
     [Fact]
-    public async Task List_sends_the_creation_date_in_utc()
+    public async Task List_sends_the_update_date_in_utc()
     {
         using var factory = new ApiFactory();
         using var client = factory.CreateClient();
@@ -293,9 +293,9 @@ public class ProductsApiTests
         using var response = await client.GetAsync(ProductsUrl, TestContext.Current.CancellationToken);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
 
-        var createdAt = body[0].GetProperty("createdAt").GetString();
-        Assert.NotNull(createdAt);
-        Assert.EndsWith("Z", createdAt);
+        var updatedAt = body[0].GetProperty("updatedAt").GetString();
+        Assert.NotNull(updatedAt);
+        Assert.EndsWith("Z", updatedAt);
     }
 
     [Fact]
@@ -361,7 +361,7 @@ public class ProductsApiTests
         return body;
     }
 
-    private sealed record ProductBody(int Id, string Code, string Name, int SalePrice, DateTime CreatedAt);
+    private sealed record ProductBody(int Id, string Code, string Name, int SalePrice, DateTime UpdatedAt);
 
     private sealed record ValidationProblemBody(Dictionary<string, string[]> Errors);
 
