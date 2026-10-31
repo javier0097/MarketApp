@@ -6,6 +6,7 @@ function App() {
   if (window.location.pathname === "/productos") {
     return (
       <Container component="main" size="lg" py="xl">
+        <title>Productos - MarketApp</title>
         <Title order={1} mb="lg">
           Productos
         </Title>
@@ -16,6 +17,7 @@ function App() {
 
   return (
     <Container component="main" size="xs" py="xl">
+      <title>Nuevo producto - MarketApp</title>
       <Title order={1} mb="lg">
         Nuevo producto
       </Title>

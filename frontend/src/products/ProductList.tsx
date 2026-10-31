@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Button,
+  CloseButton,
   Loader,
   Stack,
   Table,
   Text,
   TextInput,
+  Tooltip,
 } from "@mantine/core";
 import { getErrorMessage } from "../api/errors.ts";
 import { getProducts, type ProductResponse } from "../api/products.ts";
@@ -18,6 +20,7 @@ function ProductList() {
   const [products, setProducts] = useState<ProductResponse[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -59,30 +62,51 @@ function ProductList() {
   }
 
   const searchTerm = search.trim();
-  const normalizedSearch = normalizeForSearch(searchTerm);
-  const filteredProducts = products.filter(
-    (product) =>
-      normalizeForSearch(product.name).includes(normalizedSearch) ||
-      normalizeForSearch(product.code).includes(normalizedSearch),
-  );
+  const words = normalizeForSearch(search).split(/\s+/).filter(Boolean);
+  const filteredProducts = products.filter((product) => {
+    const name = normalizeForSearch(product.name);
+    const code = normalizeForSearch(product.code);
+    return words.every((word) => name.includes(word) || code.includes(word));
+  });
 
   return (
     <Stack gap="lg">
       <TextInput
+        ref={searchInputRef}
         label="Buscar"
         description="Por nombre o código"
         value={search}
         onChange={(event) => setSearch(event.currentTarget.value)}
+        rightSectionPointerEvents="all"
+        rightSection={
+          search && (
+            <Tooltip label="Limpiar búsqueda">
+              <CloseButton
+                aria-label="Limpiar búsqueda"
+                onClick={() => {
+                  setSearch("");
+                  searchInputRef.current?.focus();
+                }}
+              />
+            </Tooltip>
+          )
+        }
         maw={400}
         autoFocus
       />
       {filteredProducts.length === 0 ? (
-        <Text>
+        <Text style={{ overflowWrap: "anywhere" }}>
           Ningún producto coincide con «{searchTerm}». Revise lo escrito o
           busque por otra parte del nombre o del código.
         </Text>
       ) : (
-        <ProductTable products={filteredProducts} />
+        <>
+          <Text size="sm">
+            {words.length > 0 && `${filteredProducts.length} de `}
+            {products.length} {products.length === 1 ? "producto" : "productos"}
+          </Text>
+          <ProductTable products={filteredProducts} />
+        </>
       )}
     </Stack>
   );

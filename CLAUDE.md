@@ -178,7 +178,8 @@ them.
 - Show the consequence before confirming, with concrete values.
 - Empty states explain what goes there and what to do next — they are the
   first-time manual.
-- Never an icon-only button. Never an action that only appears on hover.
+- Never an icon-only button, except the X that clears a search box. Never an
+  action that only appears on hover.
 - Field labels above the input, always visible. Never placeholder-as-label.
 - Errors in plain Spanish, next to the problem, not in a toast that fades.
 - Consistent placement across screens — users learn by position.

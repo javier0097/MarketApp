@@ -147,11 +147,13 @@ function ProductForm() {
             setPrice(value);
             clearFieldError("salePrice");
           }}
-          onBlur={() => {
-            if (price !== "") {
-              setPrice(Number(price).toFixed(2));
-            }
-          }}
+          // Saving moves the focus away before the cleared price is rendered,
+          // so this has to read the latest value, not the one from this render
+          onBlur={() =>
+            setPrice((current) =>
+              current === "" ? current : Number(current).toFixed(2),
+            )
+          }
           error={errors.salePrice?.[0]}
         />
         <Stack gap="xs">

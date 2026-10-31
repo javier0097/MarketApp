@@ -51,6 +51,19 @@ The QA database keeps the data of earlier sessions. Existing data is part of
 the test, so for each finding, write down the data that mattered (for example,
 "a product with this code already existed").
 
+## When something odd shows up outside your screen
+
+The screen in your task is your goal, but like a real QA tester, you do not
+look away from what you run into. If something odd shows up in another part of
+the app while you test your screen or prepare its data, find out whether it is
+a real problem: reproduce it, try the variations needed to understand it, and
+report it as a finding, starting its title with where it happens (for example,
+"Outside this screen, form at `/`: ..."). Then go back to your screen.
+
+Follow only what you saw. Do not test the rest of that other screen or go
+looking for more problems in it. Finish testing the screen in your task, however
+interesting the detour.
+
 ## Then: web research
 
 When your own testing is done, search the web for test scenarios of similar
