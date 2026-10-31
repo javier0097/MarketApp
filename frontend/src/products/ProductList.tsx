@@ -122,7 +122,7 @@ function ProductTable({ products }: { products: ProductResponse[] }) {
           <Table.Th ta="right" style={{ whiteSpace: "nowrap" }}>
             Precio de venta
           </Table.Th>
-          <Table.Th pl="xl">Creado</Table.Th>
+          <Table.Th pl="xl">Actualizado</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -136,7 +136,7 @@ function ProductTable({ products }: { products: ProductResponse[] }) {
               {formatMoney(product.salePrice)}
             </Table.Td>
             <Table.Td pl="xl" style={{ whiteSpace: "nowrap" }}>
-              {formatDateTime(product.createdAt)}
+              {formatDateTime(product.updatedAt)}
             </Table.Td>
           </Table.Tr>
         ))}

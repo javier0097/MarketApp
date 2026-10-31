@@ -286,9 +286,29 @@ describe("request", () => {
     });
   });
 
+  describe("on status 404", () => {
+    it("throws an ApiError with the title of the response", async () => {
+      stubFetch(jsonResponse(404, { title: "El producto no existe." }));
+
+      const error = await catchError(request("/api/products/7"));
+
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as Error).message).toBe("El producto no existe.");
+    });
+
+    it("throws an ApiError with the unexpected error message when there is no body", async () => {
+      stubFetch(new Response(null, { status: 404 }));
+
+      const error = await catchError(request("/api/products/7"));
+
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as Error).message).toBe(UNEXPECTED_ERROR);
+    });
+  });
+
   describe("on any other error status", () => {
-    // The body carries title, detail and errors, so a status handled like 400 or 500 would show them.
-    it.each([401, 403, 404, 409, 422, 501, 502, 503])(
+    // The body carries title, detail and errors, so a status handled like 400, 404 or 500 would show them.
+    it.each([401, 403, 409, 422, 501, 502, 503])(
       "throws an ApiError with the unexpected error message for status %i",
       async (status) => {
         stubFetch(

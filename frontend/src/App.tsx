@@ -1,8 +1,24 @@
 import { Container, Title } from "@mantine/core";
+import ProductEdit from "./products/ProductEdit.tsx";
 import ProductForm from "./products/ProductForm.tsx";
 import ProductList from "./products/ProductList.tsx";
 
 function App() {
+  const editPath = window.location.pathname.match(
+    /^\/productos\/(\d+)\/editar$/,
+  );
+  if (editPath) {
+    return (
+      <Container component="main" size="xs" py="xl">
+        <title>Editar producto - MarketApp</title>
+        <Title order={1} mb="lg">
+          Editar producto
+        </Title>
+        <ProductEdit productId={Number(editPath[1])} />
+      </Container>
+    );
+  }
+
   if (window.location.pathname === "/productos") {
     return (
       <Container component="main" size="lg" py="xl">

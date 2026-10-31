@@ -10,7 +10,11 @@ export function toCents(amount: number): number {
   return Math.round(amount * 100);
 }
 
+export function fromCents(cents: number): number {
+  return cents / 100;
+}
+
 // The symbol is added by hand: Intl's currency style prints "Bs", "Bs." or "BOB" depending on the browser
 export function formatMoney(cents: number): string {
-  return `Bs ${numberFormat.format(cents / 100)}`;
+  return `Bs ${numberFormat.format(fromCents(cents))}`;
 }

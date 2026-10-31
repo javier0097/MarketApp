@@ -5,6 +5,7 @@ import {
   Checkbox,
   NumberInput,
   Stack,
+  Text,
   TextInput,
 } from "@mantine/core";
 import {
@@ -15,19 +16,44 @@ import {
 import {
   createProduct,
   getNextInternalCode,
+  updateProduct,
   type ProductResponse,
 } from "../api/products.ts";
-import { formatMoney, toCents } from "../lib/money.ts";
+import { formatMoney, fromCents, toCents } from "../lib/money.ts";
 
 type FieldErrors = Record<string, string[]>;
 
 const nameMaxLength = 200;
+const emptyValue = "(vacío)";
 
-function ProductForm() {
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState<number | string>("");
-  const [code, setCode] = useState("");
-  const [withoutBarcode, setWithoutBarcode] = useState(false);
+function getChanges(
+  product: ProductResponse,
+  code: string,
+  name: string,
+  salePrice: number | null,
+) {
+  const fields = [
+    { label: "Nombre", before: product.name, after: name.trim() || emptyValue },
+    {
+      label: "Precio de venta",
+      before: formatMoney(product.salePrice),
+      after: salePrice === null ? emptyValue : formatMoney(salePrice),
+    },
+    { label: "Código", before: product.code, after: code.trim() || emptyValue },
+  ];
+  return fields.filter((field) => field.before !== field.after);
+}
+
+function ProductForm({ product }: { product?: ProductResponse }) {
+  const ownInternalCode = product?.code.startsWith("TMV") ? product.code : null;
+  const [name, setName] = useState(product?.name ?? "");
+  const [price, setPrice] = useState<number | string>(
+    product ? fromCents(product.salePrice).toFixed(2) : "",
+  );
+  const [code, setCode] = useState(product?.code ?? "");
+  const [withoutBarcode, setWithoutBarcode] = useState(
+    ownInternalCode !== null,
+  );
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
@@ -36,6 +62,11 @@ function ProductForm() {
   const priceInputRef = useRef<HTMLInputElement>(null);
   const codeInputRef = useRef<HTMLInputElement>(null);
   const typedCodeRef = useRef("");
+
+  // NumberInput gives a string while the number is unfinished ("12.50", "12.") and "" when empty;
+  // null lets the API answer with its own message
+  const salePrice = price === "" ? null : toCents(Number(price));
+  const changes = product ? getChanges(product, code, name, salePrice) : [];
 
   function clearFieldError(field: string) {
     setErrors((current) => ({ ...current, [field]: [] }));
@@ -67,6 +98,11 @@ function ProductForm() {
     }
 
     typedCodeRef.current = code;
+    if (ownInternalCode) {
+      setCode(ownInternalCode);
+      return;
+    }
+
     try {
       const next = await getNextInternalCode();
       setCode(next.code);
@@ -79,17 +115,24 @@ function ProductForm() {
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    // NumberInput gives a string while the number is unfinished ("12.50", "12.") and "" when empty;
-    // null lets the API answer with its own message
-    const salePrice = price === "" ? null : toCents(Number(price));
+    // Saving would change UpdatedAt and move the product to the top of the list
+    if (product && changes.length === 0) {
+      window.location.assign("/productos");
+      return;
+    }
 
     setErrors({});
     setGeneralError(null);
     setLastSaved(null);
     setSaving(true);
     try {
-      const product = await createProduct({ code, name, salePrice });
-      setLastSaved(product);
+      if (product) {
+        await updateProduct(product.id, { code, name, salePrice });
+        window.location.assign("/productos");
+        return;
+      }
+
+      setLastSaved(await createProduct({ code, name, salePrice }));
       setName("");
       setPrice("");
       setCode("");
@@ -181,9 +224,28 @@ function ProductForm() {
             }
           />
         </Stack>
+        {product && (
+          <Stack gap="xs" style={{ overflowWrap: "anywhere" }}>
+            <Text fw={500}>Cambios</Text>
+            {changes.length === 0 ? (
+              <Text size="sm">No ha modificado ningún dato.</Text>
+            ) : (
+              changes.map((change) => (
+                <Text size="sm" key={change.label}>
+                  {change.label}: {change.before} → {change.after}
+                </Text>
+              ))
+            )}
+          </Stack>
+        )}
         <Button type="submit" loading={saving}>
-          Guardar producto
+          {product ? "Guardar cambios" : "Guardar producto"}
         </Button>
+        {product && (
+          <Button component="a" href="/productos" variant="default">
+            Cancelar
+          </Button>
+        )}
       </Stack>
     </form>
   );
