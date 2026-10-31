@@ -123,6 +123,7 @@ function ProductTable({ products }: { products: ProductResponse[] }) {
             Precio de venta
           </Table.Th>
           <Table.Th pl="xl">Actualizado</Table.Th>
+          <Table.Th>Acciones</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -137,6 +138,16 @@ function ProductTable({ products }: { products: ProductResponse[] }) {
             </Table.Td>
             <Table.Td pl="xl" style={{ whiteSpace: "nowrap" }}>
               {formatDateTime(product.updatedAt)}
+            </Table.Td>
+            <Table.Td>
+              <Button
+                component="a"
+                href={`/productos/${product.id}/editar`}
+                size="xs"
+                variant="default"
+              >
+                Editar
+              </Button>
             </Table.Td>
           </Table.Tr>
         ))}
