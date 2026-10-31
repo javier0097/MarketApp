@@ -11,9 +11,14 @@ export type ProductResponse = {
   code: string;
   name: string;
   salePrice: number;
+  createdAt: string;
 };
 
 type NextInternalCodeResponse = { code: string };
+
+export function getProducts(signal?: AbortSignal): Promise<ProductResponse[]> {
+  return request("/api/products", { signal });
+}
 
 export function createProduct(
   product: CreateProductRequest,

@@ -7,5 +7,7 @@ public interface IProductService
 {
     Task<ProductResponse> CreateAsync(CreateProductRequest request);
 
+    Task<List<ProductResponse>> GetActiveAsync();
+
     Task<string> GetNextInternalCodeAsync();
 }

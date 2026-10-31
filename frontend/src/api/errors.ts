@@ -9,3 +9,13 @@ export class ValidationError extends Error {
 }
 
 export class ApiError extends Error {}
+
+export const unexpectedErrorMessage = "Ocurrió un error inesperado.";
+
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+  console.error(error);
+  return unexpectedErrorMessage;
+}
