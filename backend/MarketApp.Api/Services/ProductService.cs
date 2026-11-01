@@ -65,7 +65,6 @@ public class ProductService(MarketAppDbContext db, ILogger<ProductService> logge
         return await db.Products
             .Where(p => p.IsActive)
             .OrderByDescending(p => p.UpdatedAt)
-            .ThenByDescending(p => p.Id)
             .Select(p => new ProductResponse(p.Id, p.Code, p.Name, p.SalePrice, p.UpdatedAt))
             .ToListAsync();
     }

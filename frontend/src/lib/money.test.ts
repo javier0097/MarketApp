@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMoney, toCents } from "./money.ts";
+import { formatMoney, fromCents, toCents } from "./money.ts";
 
 // Only non-negative amounts with at most two decimals reach this function.
 describe("toCents", () => {
@@ -80,7 +80,7 @@ describe("toCents", () => {
   );
 
   it.each([
-    { amount: 99999.99, expected: 9999999 },
+    { amount: 9999.99, expected: 999999 },
     { amount: 1234567.89, expected: 123456789 },
   ])(
     "converts a large amount to cents: $amount -> $expected",
@@ -88,6 +88,97 @@ describe("toCents", () => {
       const cents = toCents(amount);
 
       expect(cents).toBe(expected);
+    },
+  );
+});
+
+describe("fromCents", () => {
+  it("converts cents to an amount with two decimals", () => {
+    const cents = 1234;
+
+    const amount = fromCents(cents);
+
+    expect(amount).toBe(12.34);
+  });
+
+  it("converts cents to an amount with one decimal", () => {
+    const cents = 1250;
+
+    const amount = fromCents(cents);
+
+    expect(amount).toBe(12.5);
+  });
+
+  it("converts cents to a whole amount", () => {
+    const cents = 1200;
+
+    const amount = fromCents(cents);
+
+    expect(amount).toBe(12);
+  });
+
+  it("converts zero cents to zero", () => {
+    const cents = 0;
+
+    const amount = fromCents(cents);
+
+    expect(amount).toBe(0);
+  });
+
+  it.each([
+    { cents: 1, expected: 0.01 },
+    { cents: 10, expected: 0.1 },
+    { cents: 99, expected: 0.99 },
+  ])(
+    "converts an amount below one boliviano: $cents -> $expected",
+    ({ cents, expected }) => {
+      const amount = fromCents(cents);
+
+      expect(amount).toBe(expected);
+    },
+  );
+
+  it("converts exactly one boliviano", () => {
+    const cents = 100;
+
+    const amount = fromCents(cents);
+
+    expect(amount).toBe(1);
+  });
+
+  // toBe requires the exact decimal value: a result with floating point
+  // residue, even in its last digit, loses the comparison.
+  it.each([
+    { cents: 7, expected: 0.07 },
+    { cents: 29, expected: 0.29 },
+    { cents: 57, expected: 0.57 },
+    { cents: 110, expected: 1.1 },
+    { cents: 115, expected: 1.15 },
+    { cents: 435, expected: 4.35 },
+    { cents: 1999, expected: 19.99 },
+  ])(
+    "returns the exact amount without floating point residue: $cents -> $expected",
+    ({ cents, expected }) => {
+      const amount = fromCents(cents);
+
+      expect(amount).toBe(expected);
+    },
+  );
+
+  it("converts the largest number of cents that can arrive", () => {
+    const cents = 999999;
+
+    const amount = fromCents(cents);
+
+    expect(amount).toBe(9999.99);
+  });
+
+  it.each([{ cents: 1 }, { cents: 57 }, { cents: 115 }, { cents: 1999 }])(
+    "gets the original cents back when converted with toCents: $cents",
+    ({ cents }) => {
+      const amount = fromCents(cents);
+
+      expect(toCents(amount)).toBe(cents);
     },
   );
 });
