@@ -155,10 +155,13 @@ plus an incident reference that appears in the logs.
 
 ### Dates
 
-Stored in **UTC**, converted at display time. `CreatedAt` / `UpdatedAt` (and
-`RecordedAt` on movements) are set explicitly in the services with
-`DateTime.UtcNow`, so it is visible where they come from. `UpdatedAt` equals
-`CreatedAt` on insert.
+Two kinds, stored differently:
+
+- **Instants** (`CreatedAt`, `UpdatedAt`): stored in **UTC**, converted at
+  display time. Set explicitly in the services with `DateTime.UtcNow`, so it
+  is visible where they come from. `UpdatedAt` equals `CreatedAt` on insert.
+- **Calendar dates** (`MovementDate`, when a movement happened): stored as a
+  `DateOnly` without time and never converted, since they are not an instant.
 
 ### UI
 

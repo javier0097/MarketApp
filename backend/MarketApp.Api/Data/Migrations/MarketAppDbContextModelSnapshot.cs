@@ -26,10 +26,16 @@ namespace MarketApp.Api.Data.Migrations
                     b.Property<int>("Amount")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CreatedById")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsVoided")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("MovementDate")
+                    b.Property<DateOnly>("MovementDate")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Note")
@@ -39,12 +45,6 @@ namespace MarketApp.Api.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Quantity")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("RecordedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("RecordedById")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Type")
