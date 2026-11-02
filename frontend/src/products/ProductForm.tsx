@@ -20,6 +20,8 @@ import {
   type ProductResponse,
 } from "../api/products.ts";
 import { formatMoney, fromCents, toCents } from "../lib/money.ts";
+import { rememberSavedProduct } from "../lib/savedProduct.ts";
+import ProductSavedAlert from "./ProductSavedAlert.tsx";
 
 type FieldErrors = Record<string, string[]>;
 
@@ -94,6 +96,7 @@ function ProductForm({ product }: { product?: ProductResponse }) {
     clearFieldError("code");
     if (!checked) {
       setCode(typedCodeRef.current);
+      codeInputRef.current?.focus();
       return;
     }
 
@@ -127,7 +130,9 @@ function ProductForm({ product }: { product?: ProductResponse }) {
     setSaving(true);
     try {
       if (product) {
-        await updateProduct(product.id, { code, name, salePrice });
+        rememberSavedProduct(
+          await updateProduct(product.id, { code, name, salePrice }),
+        );
         window.location.assign("/productos");
         return;
       }
@@ -153,16 +158,7 @@ function ProductForm({ product }: { product?: ProductResponse }) {
     <form onSubmit={handleSubmit}>
       <Stack gap="md">
         {generalError && <Alert color="red">{generalError}</Alert>}
-        {lastSaved && (
-          <Alert
-            color="green"
-            title="Producto guardado"
-            style={{ overflowWrap: "anywhere" }}
-          >
-            {lastSaved.name} · {lastSaved.code} ·{" "}
-            {formatMoney(lastSaved.salePrice)}
-          </Alert>
-        )}
+        {lastSaved && <ProductSavedAlert product={lastSaved} />}
         <TextInput
           ref={nameInputRef}
           label="Nombre"
@@ -174,7 +170,7 @@ function ProductForm({ product }: { product?: ProductResponse }) {
           description={`${name.length}/${nameMaxLength}`}
           inputWrapperOrder={["label", "input", "description", "error"]}
           error={errors.name?.[0]}
-          autoFocus
+          autoFocus={!product}
         />
         <NumberInput
           ref={priceInputRef}
@@ -206,9 +202,9 @@ function ProductForm({ product }: { product?: ProductResponse }) {
             value={code}
             onChange={(event) => {
               setCode(event.currentTarget.value);
+              setWithoutBarcode(false);
               clearFieldError("code");
             }}
-            readOnly={withoutBarcode}
             error={errors.code?.[0]}
           />
           <Checkbox
@@ -231,7 +227,11 @@ function ProductForm({ product }: { product?: ProductResponse }) {
               <Text size="sm">No ha modificado ningún dato.</Text>
             ) : (
               changes.map((change) => (
-                <Text size="sm" key={change.label}>
+                <Text
+                  size="sm"
+                  key={change.label}
+                  style={{ whiteSpace: "pre-wrap" }}
+                >
                   {change.label}: {change.before} → {change.after}
                 </Text>
               ))
