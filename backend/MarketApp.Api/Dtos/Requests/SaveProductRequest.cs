@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MarketApp.Api.Dtos.Requests;
 
-public record CreateProductRequest
+public record SaveProductRequest
 {
     [Required(ErrorMessage = "Ingrese el código del producto.")]
     public string? Code { get; init; }

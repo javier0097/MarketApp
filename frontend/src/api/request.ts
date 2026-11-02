@@ -27,6 +27,10 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
       throw new ValidationError(problem.errors);
     }
 
+    if (response.status === 404 && problem?.title) {
+      throw new ApiError(problem.title);
+    }
+
     if (response.status === 500 && problem?.title && problem.detail) {
       throw new ApiError(`${problem.title} ${problem.detail}`);
     }

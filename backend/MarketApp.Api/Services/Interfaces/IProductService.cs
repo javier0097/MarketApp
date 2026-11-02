@@ -5,9 +5,13 @@ namespace MarketApp.Api.Services.Interfaces;
 
 public interface IProductService
 {
-    Task<ProductResponse> CreateAsync(CreateProductRequest request);
+    Task<ProductResponse> CreateAsync(SaveProductRequest request);
+
+    Task<ProductResponse> UpdateAsync(int id, SaveProductRequest request);
 
     Task<List<ProductResponse>> GetActiveAsync();
+
+    Task<ProductResponse> GetByIdAsync(int id);
 
     Task<string> GetNextInternalCodeAsync();
 }

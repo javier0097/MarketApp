@@ -13,6 +13,7 @@ public class ProductServiceTests
 {
     private const string DuplicateCodeMessage = "Ya existe un producto con este código.";
     private const string InternalCodeMessage = "Los códigos internos los asigna el sistema.";
+    private const string ProductNotFoundMessage = "El producto no existe.";
     private const string InvalidBarcodeMessage =
         "El código de barras no es válido. Revise que esté bien escrito o marque \"Sin código de barras\".";
 
@@ -21,6 +22,15 @@ public class ProductServiceTests
 
     // Same code with the last digit changed: expected check 1, not 2.
     private const string BarcodeWithWrongCheckDigit = "4006381333932";
+
+    // EAN-8 96385074: 27+6+9+8+15+0+21 = 86 -> check 4 (valid). The code of the product being updated.
+    private const string OriginalCode = "96385074";
+    private const string OriginalName = "Producto original";
+    private const int OriginalSalePrice = 900;
+    private const int OriginalMinStock = 5;
+
+    private static readonly DateTime OriginalCreatedAt = new(2026, 1, 10, 8, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime OriginalUpdatedAt = new(2026, 2, 20, 8, 0, 0, DateTimeKind.Utc);
 
     // ---------- GetNextInternalCodeAsync ----------
 
@@ -398,6 +408,92 @@ public class ProductServiceTests
         Assert.Equal(2, count);
     }
 
+    [Theory]
+    [InlineData("  4006381333931", ValidBarcode)]
+    [InlineData("4006381333931  ", ValidBarcode)]
+    [InlineData("  4006381333931  ", ValidBarcode)]
+    [InlineData("tmv00002", "TMV00002")]
+    [InlineData("Tmv00002", "TMV00002")]
+    [InlineData("  tmv00002  ", "TMV00002")]
+    public async Task Create_saves_the_code_without_outer_spaces_and_in_uppercase(string code, string expected)
+    {
+        using var database = new TestDatabase();
+        await SeedProductsAsync(database, NewProduct("TMV00001"));
+
+        var response = await CreateProductAsync(database, NewRequest(code));
+
+        var product = await FindProductAsync(database, response.Id);
+        Assert.Equal(expected, product.Code);
+    }
+
+    [Theory]
+    [InlineData("  Leche entera 1 L")]
+    [InlineData("Leche entera 1 L  ")]
+    [InlineData("  Leche entera 1 L  ")]
+    public async Task Create_saves_the_name_without_outer_spaces(string name)
+    {
+        using var database = new TestDatabase();
+
+        var response = await CreateProductAsync(database, NewRequest(ValidBarcode, name));
+
+        var product = await FindProductAsync(database, response.Id);
+        Assert.Equal("Leche entera 1 L", product.Name);
+    }
+
+    [Theory]
+    [InlineData("leche ENTERA 1 l")]
+    [InlineData("Leche   entera  1 L")]
+    public async Task Create_does_not_change_the_case_or_the_inner_spaces_of_the_name(string name)
+    {
+        using var database = new TestDatabase();
+
+        var response = await CreateProductAsync(database, NewRequest(ValidBarcode, name));
+
+        var product = await FindProductAsync(database, response.Id);
+        Assert.Equal(name, product.Name);
+    }
+
+    [Fact]
+    public async Task Create_returns_the_normalized_code_and_name()
+    {
+        using var database = new TestDatabase();
+        await SeedProductsAsync(database, NewProduct("TMV00001"));
+
+        var response = await CreateProductAsync(database, NewRequest("  tmv00002  ", "  Leche entera 1 L  "));
+
+        Assert.Equal("TMV00002", response.Code);
+        Assert.Equal("Leche entera 1 L", response.Name);
+    }
+
+    [Theory]
+    [InlineData("tmv00001")]
+    [InlineData("  tmv00001  ")]
+    [InlineData("  4006381333931  ")]
+    public async Task Create_rejects_a_code_that_is_a_duplicate_once_normalized(string code)
+    {
+        using var database = new TestDatabase();
+        await SeedProductsAsync(database, NewProduct("TMV00001"), NewProduct(ValidBarcode));
+
+        var exception = await Assert.ThrowsAsync<FieldValidationException>(
+            () => CreateProductAsync(database, NewRequest(code)));
+
+        Assert.Equal("Code", exception.Field);
+        Assert.Equal(DuplicateCodeMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Create_rejects_an_internal_code_in_lowercase_that_is_not_the_next_one()
+    {
+        using var database = new TestDatabase();
+        await SeedProductsAsync(database, NewProduct("TMV00001"));
+
+        var exception = await Assert.ThrowsAsync<FieldValidationException>(
+            () => CreateProductAsync(database, NewRequest("tmv00007")));
+
+        Assert.Equal("Code", exception.Field);
+        Assert.Equal(InternalCodeMessage, exception.Message);
+    }
+
     // ---------- GetActiveAsync ----------
 
     [Fact]
@@ -447,32 +543,17 @@ public class ProductServiceTests
     }
 
     [Fact]
-    public async Task Orders_the_products_from_the_highest_to_the_lowest_id()
+    public async Task Returns_the_id_code_name_sale_price_and_update_date_of_the_product()
     {
         using var database = new TestDatabase();
-        var seeded = new[] { NewProduct("TMV00001"), NewProduct("TMV00002"), NewProduct("TMV00003") };
-        await SeedProductsAsync(database, seeded);
-        using var context = database.CreateContext();
-        var service = new ProductService(context, NullLogger<ProductService>.Instance);
-
-        var products = await service.GetActiveAsync();
-
-        var expectedIds = seeded.Select(product => product.Id).OrderDescending().ToList();
-        var ids = products.Select(product => product.Id).ToList();
-        Assert.Equal(expectedIds, ids);
-    }
-
-    [Fact]
-    public async Task Returns_the_id_code_name_sale_price_and_creation_date_of_the_product()
-    {
-        using var database = new TestDatabase();
-        var createdAt = new DateTime(2026, 5, 15, 9, 30, 0, DateTimeKind.Utc);
+        var updatedAt = new DateTime(2026, 5, 15, 9, 30, 0, DateTimeKind.Utc);
         var seeded = new Product
         {
             Code = ValidBarcode,
             Name = "Leche entera 1 L",
             SalePrice = 1250,
-            CreatedAt = createdAt,
+            CreatedAt = new DateTime(2026, 5, 1, 8, 0, 0, DateTimeKind.Utc),
+            UpdatedAt = updatedAt,
             IsActive = true,
         };
         await SeedProductsAsync(database, seeded);
@@ -486,9 +567,669 @@ public class ProductServiceTests
         Assert.Equal(ValidBarcode, product.Code);
         Assert.Equal("Leche entera 1 L", product.Name);
         Assert.Equal(1250, product.SalePrice);
-        Assert.Equal(createdAt, product.CreatedAt);
-        Assert.Equal(DateTimeKind.Utc, product.CreatedAt.Kind);
+        Assert.Equal(updatedAt, product.UpdatedAt);
+        Assert.Equal(DateTimeKind.Utc, product.UpdatedAt.Kind);
     }
+
+    [Fact]
+    public async Task Orders_the_products_from_the_latest_to_the_earliest_update_regardless_of_the_creation_date()
+    {
+        using var database = new TestDatabase();
+        await SeedProductsAsync(
+            database,
+            NewProductWithDates(
+                "TMV00001",
+                createdAt: new DateTime(2026, 1, 10, 8, 0, 0, DateTimeKind.Utc),
+                updatedAt: new DateTime(2026, 3, 2, 8, 0, 0, DateTimeKind.Utc)),
+            NewProductWithDates(
+                "TMV00002",
+                createdAt: new DateTime(2026, 1, 20, 8, 0, 0, DateTimeKind.Utc),
+                updatedAt: new DateTime(2026, 3, 3, 8, 0, 0, DateTimeKind.Utc)),
+            NewProductWithDates(
+                "TMV00003",
+                createdAt: new DateTime(2026, 1, 30, 8, 0, 0, DateTimeKind.Utc),
+                updatedAt: new DateTime(2026, 3, 1, 8, 0, 0, DateTimeKind.Utc)));
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        var codes = products.Select(product => product.Code).ToList();
+        Assert.Equal(["TMV00002", "TMV00001", "TMV00003"], codes);
+    }
+
+    [Fact]
+    public async Task Puts_first_the_latest_update_when_the_dates_differ_by_one_millisecond()
+    {
+        using var database = new TestDatabase();
+        var createdAt = new DateTime(2026, 5, 1, 8, 0, 0, DateTimeKind.Utc);
+        var earlierUpdate = new DateTime(2026, 5, 15, 9, 30, 0, DateTimeKind.Utc);
+        await SeedProductsAsync(
+            database,
+            NewProductWithDates("TMV00001", createdAt, earlierUpdate),
+            NewProductWithDates("TMV00002", createdAt, earlierUpdate.AddMilliseconds(1)));
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        var codes = products.Select(product => product.Code).ToList();
+        Assert.Equal(["TMV00002", "TMV00001"], codes);
+    }
+
+    [Fact]
+    public async Task Leaves_out_an_inactive_product_with_the_latest_update_and_keeps_the_order_of_the_rest()
+    {
+        using var database = new TestDatabase();
+        var createdAt = new DateTime(2026, 1, 1, 8, 0, 0, DateTimeKind.Utc);
+        await SeedProductsAsync(
+            database,
+            NewProductWithDates("TMV00001", createdAt, new DateTime(2026, 3, 2, 8, 0, 0, DateTimeKind.Utc)),
+            NewProductWithDates("TMV00002", createdAt, new DateTime(2026, 3, 4, 8, 0, 0, DateTimeKind.Utc), isActive: false),
+            NewProductWithDates("TMV00003", createdAt, new DateTime(2026, 3, 1, 8, 0, 0, DateTimeKind.Utc)),
+            NewProductWithDates("TMV00004", createdAt, new DateTime(2026, 3, 3, 8, 0, 0, DateTimeKind.Utc)));
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        var codes = products.Select(product => product.Code).ToList();
+        Assert.Equal(["TMV00004", "TMV00001", "TMV00003"], codes);
+    }
+
+    // ---------- GetByIdAsync ----------
+
+    [Fact]
+    public async Task Returns_the_requested_product_when_there_are_several()
+    {
+        using var database = new TestDatabase();
+        var requested = NewProduct("TMV00002");
+        await SeedProductsAsync(database, NewProduct("TMV00001"), requested, NewProduct("TMV00003"));
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var product = await service.GetByIdAsync(requested.Id);
+
+        Assert.Equal(requested.Id, product.Id);
+        Assert.Equal("TMV00002", product.Code);
+    }
+
+    [Fact]
+    public async Task Returns_every_field_of_the_requested_product()
+    {
+        using var database = new TestDatabase();
+        var updatedAt = new DateTime(2026, 5, 15, 9, 30, 0, DateTimeKind.Utc);
+        var requested = new Product
+        {
+            Code = ValidBarcode,
+            Name = "Leche entera 1 L",
+            SalePrice = 1250,
+            CreatedAt = new DateTime(2026, 5, 1, 8, 0, 0, DateTimeKind.Utc),
+            UpdatedAt = updatedAt,
+            IsActive = true,
+        };
+        await SeedProductsAsync(database, NewProduct("TMV00001"), requested);
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var product = await service.GetByIdAsync(requested.Id);
+
+        Assert.Equal(requested.Id, product.Id);
+        Assert.Equal(ValidBarcode, product.Code);
+        Assert.Equal("Leche entera 1 L", product.Name);
+        Assert.Equal(1250, product.SalePrice);
+        Assert.Equal(updatedAt, product.UpdatedAt);
+    }
+
+    [Fact]
+    public async Task Returns_the_update_date_of_the_requested_product_in_utc()
+    {
+        using var database = new TestDatabase();
+        var requested = NewProductWithDates(
+            "TMV00001",
+            createdAt: new DateTime(2026, 5, 1, 8, 0, 0, DateTimeKind.Utc),
+            updatedAt: new DateTime(2026, 5, 15, 9, 30, 0, DateTimeKind.Utc));
+        await SeedProductsAsync(database, requested);
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var product = await service.GetByIdAsync(requested.Id);
+
+        Assert.Equal(DateTimeKind.Utc, product.UpdatedAt.Kind);
+    }
+
+    [Fact]
+    public async Task Returns_an_inactive_product()
+    {
+        using var database = new TestDatabase();
+        var requested = NewProduct("TMV00001", isActive: false);
+        await SeedProductsAsync(database, requested);
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var product = await service.GetByIdAsync(requested.Id);
+
+        Assert.Equal(requested.Id, product.Id);
+        Assert.Equal("TMV00001", product.Code);
+    }
+
+    [Fact]
+    public async Task Throws_not_found_when_the_id_belongs_to_no_product_and_others_exist()
+    {
+        using var database = new TestDatabase();
+        var existing = NewProduct("TMV00001");
+        await SeedProductsAsync(database, existing);
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(
+            () => service.GetByIdAsync(existing.Id + 1));
+
+        Assert.Equal(ProductNotFoundMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Throws_not_found_when_there_are_no_products()
+    {
+        using var database = new TestDatabase();
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(() => service.GetByIdAsync(1));
+
+        Assert.Equal(ProductNotFoundMessage, exception.Message);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Throws_not_found_when_the_id_is_not_positive(int id)
+    {
+        using var database = new TestDatabase();
+        await SeedProductsAsync(database, NewProduct("TMV00001"));
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(() => service.GetByIdAsync(id));
+
+        Assert.Equal(ProductNotFoundMessage, exception.Message);
+    }
+
+    // ---------- UpdateAsync ----------
+
+    [Fact]
+    public async Task Update_saves_and_returns_the_new_data_with_the_current_update_date()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original);
+
+        var before = DateTime.UtcNow;
+        var response = await UpdateProductAsync(
+            database, original.Id, NewRequest(ValidBarcode, "Leche entera 1 L", 1400));
+        var after = DateTime.UtcNow;
+
+        Assert.Equal(original.Id, response.Id);
+        Assert.Equal(ValidBarcode, response.Code);
+        Assert.Equal("Leche entera 1 L", response.Name);
+        Assert.Equal(1400, response.SalePrice);
+        Assert.InRange(response.UpdatedAt, before, after);
+
+        var product = await FindProductAsync(database, original.Id);
+        Assert.Equal(ValidBarcode, product.Code);
+        Assert.Equal("Leche entera 1 L", product.Name);
+        Assert.Equal(1400, product.SalePrice);
+        Assert.InRange(product.UpdatedAt, before, after);
+    }
+
+    [Fact]
+    public async Task Update_does_not_change_the_fields_outside_the_request()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original);
+
+        await UpdateProductAsync(database, original.Id, NewRequest(ValidBarcode));
+
+        var product = await FindProductAsync(database, original.Id);
+        Assert.Equal(OriginalCreatedAt, product.CreatedAt);
+        Assert.Equal(OriginalMinStock, product.MinStock);
+        Assert.True(product.IsActive);
+    }
+
+    [Fact]
+    public async Task Update_does_not_change_other_products()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        var other = NewProductWithDates("TMV00001", OriginalCreatedAt, OriginalUpdatedAt);
+        await SeedProductsAsync(database, original, other);
+
+        await UpdateProductAsync(database, original.Id, NewRequest(ValidBarcode, "Leche entera 1 L", 1400));
+
+        var product = await FindProductAsync(database, other.Id);
+        Assert.Equal("TMV00001", product.Code);
+        Assert.Equal("Producto TMV00001", product.Name);
+        Assert.Equal(other.SalePrice, product.SalePrice);
+        Assert.Equal(OriginalUpdatedAt, product.UpdatedAt);
+    }
+
+    [Fact]
+    public async Task Update_accepts_the_next_internal_code()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original, NewProduct("TMV00001"));
+
+        await UpdateProductAsync(database, original.Id, NewRequest("TMV00002"));
+
+        var product = await FindProductAsync(database, original.Id);
+        Assert.Equal("TMV00002", product.Code);
+    }
+
+    [Fact]
+    public async Task Update_rejects_an_invalid_barcode()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original);
+
+        var exception = await Assert.ThrowsAsync<FieldValidationException>(
+            () => UpdateProductAsync(database, original.Id, NewRequest(BarcodeWithWrongCheckDigit)));
+
+        Assert.Equal("Code", exception.Field);
+        Assert.Equal(InvalidBarcodeMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Update_rejects_an_internal_code_that_is_not_the_next_one()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original, NewProduct("TMV00001"));
+
+        var exception = await Assert.ThrowsAsync<FieldValidationException>(
+            () => UpdateProductAsync(database, original.Id, NewRequest("TMV00007")));
+
+        Assert.Equal("Code", exception.Field);
+        Assert.Equal(InternalCodeMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Update_rejects_a_code_that_another_product_already_has()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original, NewProduct(ValidBarcode));
+
+        var exception = await Assert.ThrowsAsync<FieldValidationException>(
+            () => UpdateProductAsync(database, original.Id, NewRequest(ValidBarcode)));
+
+        Assert.Equal("Code", exception.Field);
+        Assert.Equal(DuplicateCodeMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Update_rejects_a_code_that_an_inactive_product_already_has()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original, NewProduct(ValidBarcode, isActive: false));
+
+        var exception = await Assert.ThrowsAsync<FieldValidationException>(
+            () => UpdateProductAsync(database, original.Id, NewRequest(ValidBarcode)));
+
+        Assert.Equal("Code", exception.Field);
+        Assert.Equal(DuplicateCodeMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Update_reports_an_internal_code_of_another_product_as_a_duplicate()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original, NewProduct("TMV00001"));
+
+        var exception = await Assert.ThrowsAsync<FieldValidationException>(
+            () => UpdateProductAsync(database, original.Id, NewRequest("TMV00001")));
+
+        Assert.Equal("Code", exception.Field);
+        Assert.Equal(DuplicateCodeMessage, exception.Message);
+    }
+
+    // Rejected codes: bad check digit, wrong internal code, duplicate barcode, duplicate internal code.
+    [Theory]
+    [InlineData(BarcodeWithWrongCheckDigit)]
+    [InlineData("TMV00007")]
+    [InlineData(ValidBarcode)]
+    [InlineData("TMV00001")]
+    public async Task Update_does_not_save_changes_that_fail_validation(string code)
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original, NewProduct("TMV00001"), NewProduct(ValidBarcode));
+
+        await Assert.ThrowsAsync<FieldValidationException>(
+            () => UpdateProductAsync(database, original.Id, NewRequest(code, "Leche entera 1 L", 1400)));
+
+        var product = await FindProductAsync(database, original.Id);
+        Assert.Equal(OriginalCode, product.Code);
+        Assert.Equal(OriginalName, product.Name);
+        Assert.Equal(OriginalSalePrice, product.SalePrice);
+        Assert.Equal(OriginalUpdatedAt, product.UpdatedAt);
+    }
+
+    [Fact]
+    public async Task Update_throws_not_found_when_the_id_belongs_to_no_product_and_others_exist()
+    {
+        using var database = new TestDatabase();
+        var existing = NewProductToUpdate();
+        await SeedProductsAsync(database, existing);
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(
+            () => UpdateProductAsync(database, existing.Id + 1, NewRequest(ValidBarcode)));
+
+        Assert.Equal(ProductNotFoundMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Update_throws_not_found_when_there_are_no_products()
+    {
+        using var database = new TestDatabase();
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(
+            () => UpdateProductAsync(database, 1, NewRequest(ValidBarcode)));
+
+        Assert.Equal(ProductNotFoundMessage, exception.Message);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Update_throws_not_found_when_the_id_is_not_positive(int id)
+    {
+        using var database = new TestDatabase();
+        await SeedProductsAsync(database, NewProductToUpdate());
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(
+            () => UpdateProductAsync(database, id, NewRequest(ValidBarcode)));
+
+        Assert.Equal(ProductNotFoundMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Update_does_not_save_anything_when_the_product_does_not_exist()
+    {
+        using var database = new TestDatabase();
+        var existing = NewProductToUpdate();
+        await SeedProductsAsync(database, existing);
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => UpdateProductAsync(database, existing.Id + 1, NewRequest(ValidBarcode, "Leche entera 1 L", 1400)));
+
+        using var verification = database.CreateContext();
+        var product = await verification.Products.SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(OriginalCode, product.Code);
+        Assert.Equal(OriginalName, product.Name);
+        Assert.Equal(OriginalSalePrice, product.SalePrice);
+    }
+
+    [Fact]
+    public async Task Update_accepts_the_barcode_the_product_already_has()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original);
+
+        await UpdateProductAsync(database, original.Id, NewRequest(OriginalCode, "Leche entera 1 L", 1400));
+
+        var product = await FindProductAsync(database, original.Id);
+        Assert.Equal(OriginalCode, product.Code);
+        Assert.Equal("Leche entera 1 L", product.Name);
+        Assert.Equal(1400, product.SalePrice);
+    }
+
+    [Theory]
+    [InlineData("TMV00001")]
+    [InlineData("TMV00002")]
+    public async Task Update_accepts_the_internal_code_the_product_already_has(string code)
+    {
+        using var database = new TestDatabase();
+        var seeded = new[] { NewProduct("TMV00001"), NewProduct("TMV00002") };
+        await SeedProductsAsync(database, seeded);
+        var original = seeded.Single(product => product.Code == code);
+
+        await UpdateProductAsync(database, original.Id, NewRequest(code, "Leche entera 1 L", 1400));
+
+        var updated = await FindProductAsync(database, original.Id);
+        Assert.Equal(code, updated.Code);
+        Assert.Equal("Leche entera 1 L", updated.Name);
+        Assert.Equal(1400, updated.SalePrice);
+    }
+
+    [Fact]
+    public async Task Update_accepts_changing_an_internal_code_to_the_next_one()
+    {
+        using var database = new TestDatabase();
+        var original = NewProduct("TMV00001");
+        await SeedProductsAsync(database, original);
+
+        await UpdateProductAsync(database, original.Id, NewRequest("TMV00002"));
+
+        var product = await FindProductAsync(database, original.Id);
+        Assert.Equal("TMV00002", product.Code);
+    }
+
+    [Fact]
+    public async Task Update_saves_the_changes_of_an_inactive_product()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductWithDates(OriginalCode, OriginalCreatedAt, OriginalUpdatedAt, isActive: false);
+        await SeedProductsAsync(database, original);
+
+        await UpdateProductAsync(database, original.Id, NewRequest(ValidBarcode, "Leche entera 1 L", 1400));
+
+        var product = await FindProductAsync(database, original.Id);
+        Assert.Equal(ValidBarcode, product.Code);
+        Assert.Equal("Leche entera 1 L", product.Name);
+        Assert.Equal(1400, product.SalePrice);
+    }
+
+    [Fact]
+    public async Task Update_keeps_an_inactive_product_inactive()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductWithDates(OriginalCode, OriginalCreatedAt, OriginalUpdatedAt, isActive: false);
+        await SeedProductsAsync(database, original);
+
+        await UpdateProductAsync(database, original.Id, NewRequest(ValidBarcode));
+
+        var product = await FindProductAsync(database, original.Id);
+        Assert.False(product.IsActive);
+    }
+
+    // Each code would fail validation by itself: bad check digit, wrong internal code, duplicate barcode.
+    [Theory]
+    [InlineData(BarcodeWithWrongCheckDigit)]
+    [InlineData("TMV00007")]
+    [InlineData(ValidBarcode)]
+    public async Task Update_reports_not_found_before_an_invalid_code(string code)
+    {
+        using var database = new TestDatabase();
+        var existing = NewProduct(ValidBarcode);
+        await SeedProductsAsync(database, existing);
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(
+            () => UpdateProductAsync(database, existing.Id + 1, NewRequest(code)));
+
+        Assert.Equal(ProductNotFoundMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Update_leaves_updated_by_empty()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original);
+
+        await UpdateProductAsync(database, original.Id, NewRequest(ValidBarcode));
+
+        var product = await FindProductAsync(database, original.Id);
+        Assert.Null(product.UpdatedById);
+    }
+
+    [Fact]
+    public async Task Update_returns_the_update_date_in_utc()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original);
+
+        var response = await UpdateProductAsync(database, original.Id, NewRequest(ValidBarcode));
+
+        Assert.Equal(DateTimeKind.Utc, response.UpdatedAt.Kind);
+    }
+
+    [Theory]
+    [InlineData("  4006381333931", ValidBarcode)]
+    [InlineData("4006381333931  ", ValidBarcode)]
+    [InlineData("  4006381333931  ", ValidBarcode)]
+    [InlineData("tmv00002", "TMV00002")]
+    [InlineData("Tmv00002", "TMV00002")]
+    [InlineData("  tmv00002  ", "TMV00002")]
+    public async Task Update_saves_the_code_without_outer_spaces_and_in_uppercase(string code, string expected)
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original, NewProduct("TMV00001"));
+
+        await UpdateProductAsync(database, original.Id, NewRequest(code));
+
+        var product = await FindProductAsync(database, original.Id);
+        Assert.Equal(expected, product.Code);
+    }
+
+    [Theory]
+    [InlineData("  Leche entera 1 L")]
+    [InlineData("Leche entera 1 L  ")]
+    [InlineData("  Leche entera 1 L  ")]
+    public async Task Update_saves_the_name_without_outer_spaces(string name)
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original);
+
+        await UpdateProductAsync(database, original.Id, NewRequest(ValidBarcode, name));
+
+        var product = await FindProductAsync(database, original.Id);
+        Assert.Equal("Leche entera 1 L", product.Name);
+    }
+
+    [Theory]
+    [InlineData("leche ENTERA 1 l")]
+    [InlineData("Leche   entera  1 L")]
+    public async Task Update_does_not_change_the_case_or_the_inner_spaces_of_the_name(string name)
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original);
+
+        await UpdateProductAsync(database, original.Id, NewRequest(ValidBarcode, name));
+
+        var product = await FindProductAsync(database, original.Id);
+        Assert.Equal(name, product.Name);
+    }
+
+    [Fact]
+    public async Task Update_returns_the_normalized_code_and_name()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original, NewProduct("TMV00001"));
+
+        var response = await UpdateProductAsync(
+            database, original.Id, NewRequest("  tmv00002  ", "  Leche entera 1 L  "));
+
+        Assert.Equal("TMV00002", response.Code);
+        Assert.Equal("Leche entera 1 L", response.Name);
+    }
+
+    [Theory]
+    [InlineData("tmv00001")]
+    [InlineData("  tmv00001  ")]
+    [InlineData("  4006381333931  ")]
+    public async Task Update_rejects_a_code_that_is_a_duplicate_once_normalized(string code)
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original, NewProduct("TMV00001"), NewProduct(ValidBarcode));
+
+        var exception = await Assert.ThrowsAsync<FieldValidationException>(
+            () => UpdateProductAsync(database, original.Id, NewRequest(code)));
+
+        Assert.Equal("Code", exception.Field);
+        Assert.Equal(DuplicateCodeMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Update_rejects_an_internal_code_in_lowercase_that_is_not_the_next_one()
+    {
+        using var database = new TestDatabase();
+        var original = NewProductToUpdate();
+        await SeedProductsAsync(database, original, NewProduct("TMV00001"));
+
+        var exception = await Assert.ThrowsAsync<FieldValidationException>(
+            () => UpdateProductAsync(database, original.Id, NewRequest("tmv00007")));
+
+        Assert.Equal("Code", exception.Field);
+        Assert.Equal(InternalCodeMessage, exception.Message);
+    }
+
+    [Theory]
+    [InlineData("TMV00001", "  tmv00001  ")]
+    [InlineData(OriginalCode, "  96385074  ")]
+    public async Task Update_accepts_the_code_the_product_already_has_once_normalized(string storedCode, string code)
+    {
+        using var database = new TestDatabase();
+        var original = NewProduct(storedCode);
+        await SeedProductsAsync(database, original, NewProduct("TMV00002"));
+
+        await UpdateProductAsync(database, original.Id, NewRequest(code));
+
+        var product = await FindProductAsync(database, original.Id);
+        Assert.Equal(storedCode, product.Code);
+    }
+
+    private static Product NewProductToUpdate() =>
+        new()
+        {
+            Code = OriginalCode,
+            Name = OriginalName,
+            SalePrice = OriginalSalePrice,
+            MinStock = OriginalMinStock,
+            CreatedAt = OriginalCreatedAt,
+            UpdatedAt = OriginalUpdatedAt,
+            IsActive = true,
+        };
+
+    private static async Task<ProductResponse> UpdateProductAsync(
+        TestDatabase database, int id, SaveProductRequest request)
+    {
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+        return await service.UpdateAsync(id, request);
+    }
+
+    private static Product NewProductWithDates(
+        string code, DateTime createdAt, DateTime updatedAt, bool isActive = true) =>
+        new()
+        {
+            Name = $"Producto {code}",
+            Code = code,
+            CreatedAt = createdAt,
+            UpdatedAt = updatedAt,
+            IsActive = isActive,
+        };
 
     private static Product NewProduct(string code, bool isActive = true) =>
         new() { Name = $"Producto {code}", Code = code, IsActive = isActive };
@@ -500,10 +1241,10 @@ public class ProductServiceTests
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
-    private static CreateProductRequest NewRequest(string code, string name = "Arroz 1 kg", int salePrice = 1250) =>
+    private static SaveProductRequest NewRequest(string code, string name = "Arroz 1 kg", int salePrice = 1250) =>
         new() { Code = code, Name = name, SalePrice = salePrice };
 
-    private static async Task<ProductResponse> CreateProductAsync(TestDatabase database, CreateProductRequest request)
+    private static async Task<ProductResponse> CreateProductAsync(TestDatabase database, SaveProductRequest request)
     {
         using var context = database.CreateContext();
         var service = new ProductService(context, NullLogger<ProductService>.Instance);

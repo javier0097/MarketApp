@@ -16,11 +16,25 @@ public class ProductsController(IProductService productService) : ControllerBase
         return Ok(products);
     }
 
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var product = await productService.GetByIdAsync(id);
+        return Ok(product);
+    }
+
     [HttpPost]
-    public async Task<IActionResult> Create(CreateProductRequest request)
+    public async Task<IActionResult> Create(SaveProductRequest request)
     {
         var product = await productService.CreateAsync(request);
         return StatusCode(StatusCodes.Status201Created, product);
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, SaveProductRequest request)
+    {
+        var product = await productService.UpdateAsync(id, request);
+        return Ok(product);
     }
 
     [HttpGet("next-internal-code")]

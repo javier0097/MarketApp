@@ -26,6 +26,15 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
                 };
                 break;
 
+            case NotFoundException notFound:
+                logger.LogInformation("Not found: {Path} {Message}", httpContext.Request.Path, notFound.Message);
+                problem = new ProblemDetails
+                {
+                    Status = StatusCodes.Status404NotFound,
+                    Title = notFound.Message,
+                };
+                break;
+
             default:
                 // The full trace id is on every log line; its first 8 characters are enough for users to read out
                 var incident = Activity.Current?.TraceId.ToHexString()[..8] ?? httpContext.TraceIdentifier;
