@@ -28,6 +28,7 @@ builder.Services.AddDbContext<MarketAppDbContext>(options => options
     .UseSqlite(builder.Configuration.GetConnectionString("MarketApp"))
     .EnableSensitiveDataLogging());
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IInventoryMovementService, InventoryMovementService>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
