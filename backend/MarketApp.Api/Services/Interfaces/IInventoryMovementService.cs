@@ -6,4 +6,6 @@ namespace MarketApp.Api.Services.Interfaces;
 public interface IInventoryMovementService
 {
     Task<InboundMovementResponse> CreateInboundAsync(CreateInboundMovementRequest request);
+
+    Task<StockSummaryResponse> GetStockSummaryAsync(int productId);
 }

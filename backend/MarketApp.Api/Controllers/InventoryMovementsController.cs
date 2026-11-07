@@ -14,4 +14,11 @@ public class InventoryMovementsController(IInventoryMovementService inventoryMov
         var movement = await inventoryMovementService.CreateInboundAsync(request);
         return StatusCode(StatusCodes.Status201Created, movement);
     }
+
+    [HttpGet("stock-summary")]
+    public async Task<IActionResult> GetStockSummary(int productId)
+    {
+        var summary = await inventoryMovementService.GetStockSummaryAsync(productId);
+        return Ok(summary);
+    }
 }

@@ -45,4 +45,25 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
         return new InboundMovementResponse(
             movement.Id, movement.ProductId, movement.Quantity, movement.Amount, movement.MovementDate, movement.Note, movement.CreatedAt);
     }
+
+    public async Task<StockSummaryResponse> GetStockSummaryAsync(int productId)
+    {
+        if (!await db.Products.AnyAsync(p => p.Id == productId))
+        {
+            throw new NotFoundException("El producto no existe.");
+        }
+
+        var movements = db.InventoryMovements.Where(m => m.ProductId == productId && !m.IsVoided);
+
+        var stock = await movements.SumAsync(m => m.Type == MovementType.Inbound ? m.Quantity : -m.Quantity);
+
+        var lastInbound = await movements
+            .Where(m => m.Type == MovementType.Inbound)
+            .OrderByDescending(m => m.MovementDate)
+            .ThenByDescending(m => m.Id)
+            .Select(m => new { m.Quantity, m.Amount })
+            .FirstOrDefaultAsync();
+
+        return new StockSummaryResponse(stock, lastInbound?.Quantity, lastInbound?.Amount);
+    }
 }
