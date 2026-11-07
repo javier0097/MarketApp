@@ -1,4 +1,4 @@
-import { useRef, useState, type SubmitEvent } from "react";
+import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import { Alert, Button, NumberInput, Stack, TextInput } from "@mantine/core";
 import {
   getErrorMessage,
@@ -6,15 +6,22 @@ import {
   ValidationError,
 } from "../api/errors.ts";
 import { createInboundMovement } from "../api/inventoryMovements.ts";
+import { getProducts, type ProductResponse } from "../api/products.ts";
 import { today } from "../lib/dates.ts";
 import { toCents } from "../lib/money.ts";
+import { findProductByCode } from "../lib/search.ts";
+import ProductPicker from "./ProductPicker.tsx";
 
 type FieldErrors = Record<string, string[]>;
 
 const noteMaxLength = 500;
 
 function InboundForm() {
+  const [products, setProducts] = useState<ProductResponse[] | null>(null);
   const [productText, setProductText] = useState("");
+  const [pickedProduct, setPickedProduct] = useState<ProductResponse | null>(
+    null,
+  );
   const [quantity, setQuantity] = useState<number | string>("");
   const [cost, setCost] = useState<number | string>("");
   const [movementDate, setMovementDate] = useState(today);
@@ -27,6 +34,26 @@ function InboundForm() {
   const costInputRef = useRef<HTMLInputElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
   const noteInputRef = useRef<HTMLInputElement>(null);
+
+  // Derived on every render, so a code scanned before the products finished loading is recognized when they arrive
+  const product = pickedProduct ?? findProductByCode(products, productText);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadProducts() {
+      try {
+        setProducts(await getProducts(controller.signal));
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setGeneralError(getErrorMessage(error));
+        }
+      }
+    }
+
+    loadProducts();
+    return () => controller.abort();
+  }, []);
 
   function clearFieldError(field: string) {
     setErrors((current) => ({ ...current, [field]: [] }));
@@ -58,7 +85,7 @@ function InboundForm() {
     setSaving(true);
     try {
       await createInboundMovement({
-        productId: null,
+        productId: product?.id ?? null,
         quantity: quantity === "" ? null : Number(quantity),
         totalCost: cost === "" ? null : toCents(Number(cost)),
         movementDate: movementDate === "" ? null : movementDate,
@@ -66,7 +93,14 @@ function InboundForm() {
       });
     } catch (error) {
       if (error instanceof ValidationError) {
-        showFieldErrors(error.errors);
+        const fieldErrors = { ...error.errors };
+        const typed = productText.trim();
+        if (fieldErrors.productId && product === null && typed !== "") {
+          fieldErrors.productId = [
+            `«${typed}» no es el nombre ni el código de ningún producto. Elija uno en la lista que aparece al escribir o escanee el código de barras del producto.`,
+          ];
+        }
+        showFieldErrors(fieldErrors);
       } else {
         setGeneralError(getErrorMessage(error));
       }
@@ -81,16 +115,18 @@ function InboundForm() {
     <form onSubmit={handleSubmit} noValidate>
       <Stack gap="md">
         {generalError && <Alert color="red">{generalError}</Alert>}
-        <TextInput
-          ref={productInputRef}
-          label="Producto"
-          value={productText}
-          onChange={(event) => {
-            setProductText(event.currentTarget.value);
+        <ProductPicker
+          products={products}
+          text={productText}
+          product={product}
+          onChange={(text, picked) => {
+            setProductText(text);
+            setPickedProduct(picked);
             clearFieldError("productId");
           }}
+          onPick={() => quantityInputRef.current?.focus()}
           error={errors.productId?.[0]}
-          autoFocus
+          inputRef={productInputRef}
         />
         <NumberInput
           ref={quantityInputRef}

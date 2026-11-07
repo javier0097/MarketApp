@@ -15,7 +15,7 @@ import { getProducts, type ProductResponse } from "../api/products.ts";
 import { formatDateTime } from "../lib/dates.ts";
 import { formatMoney } from "../lib/money.ts";
 import { clearSavedProduct, readSavedProduct } from "../lib/savedProduct.ts";
-import { normalizeForSearch } from "../lib/search.ts";
+import { matchesSearchWords, toSearchWords } from "../lib/search.ts";
 import ProductSavedAlert from "./ProductSavedAlert.tsx";
 
 function ProductList() {
@@ -69,12 +69,10 @@ function ProductList() {
   }
 
   const searchTerm = search.trim();
-  const words = normalizeForSearch(search).split(/\s+/).filter(Boolean);
-  const filteredProducts = products.filter((product) => {
-    const name = normalizeForSearch(product.name);
-    const code = normalizeForSearch(product.code);
-    return words.every((word) => name.includes(word) || code.includes(word));
-  });
+  const words = toSearchWords(search);
+  const filteredProducts = products.filter((product) =>
+    matchesSearchWords(product, words),
+  );
 
   return (
     <Stack gap="lg">

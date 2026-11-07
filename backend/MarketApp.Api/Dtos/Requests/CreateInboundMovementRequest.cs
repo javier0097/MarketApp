@@ -4,7 +4,7 @@ namespace MarketApp.Api.Dtos.Requests;
 
 public record CreateInboundMovementRequest
 {
-    [Required(ErrorMessage = "Elija el producto.")]
+    [Required(ErrorMessage = "Falta el producto. Búsquelo por nombre o código, o escanee su código de barras.")]
     public int? ProductId { get; init; }
 
     [Required(ErrorMessage = "Ingrese la cantidad de unidades del lote.")]
