@@ -1,0 +1,164 @@
+import { useRef, useState, type SubmitEvent } from "react";
+import { Alert, Button, NumberInput, Stack, TextInput } from "@mantine/core";
+import {
+  getErrorMessage,
+  unexpectedErrorMessage,
+  ValidationError,
+} from "../api/errors.ts";
+import { createInboundMovement } from "../api/inventoryMovements.ts";
+import { today } from "../lib/dates.ts";
+import { toCents } from "../lib/money.ts";
+
+type FieldErrors = Record<string, string[]>;
+
+const noteMaxLength = 500;
+
+function InboundForm() {
+  const [productText, setProductText] = useState("");
+  const [quantity, setQuantity] = useState<number | string>("");
+  const [cost, setCost] = useState<number | string>("");
+  const [movementDate, setMovementDate] = useState(today);
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [generalError, setGeneralError] = useState<string | null>(null);
+  const productInputRef = useRef<HTMLInputElement>(null);
+  const quantityInputRef = useRef<HTMLInputElement>(null);
+  const costInputRef = useRef<HTMLInputElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const noteInputRef = useRef<HTMLInputElement>(null);
+
+  function clearFieldError(field: string) {
+    setErrors((current) => ({ ...current, [field]: [] }));
+  }
+
+  function showFieldErrors(fieldErrors: FieldErrors) {
+    setErrors(fieldErrors);
+
+    // In screen order, so focus goes to the first field with an error
+    const fieldInputs = [
+      ["productId", productInputRef],
+      ["quantity", quantityInputRef],
+      ["totalCost", costInputRef],
+      ["movementDate", dateInputRef],
+      ["note", noteInputRef],
+    ] as const;
+    const firstWithError = fieldInputs.find(([field]) => fieldErrors[field]);
+    if (firstWithError) {
+      firstWithError[1].current?.focus();
+    } else {
+      setGeneralError(unexpectedErrorMessage);
+    }
+  }
+
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    setGeneralError(null);
+    setSaving(true);
+    try {
+      await createInboundMovement({
+        productId: null,
+        quantity: quantity === "" ? null : Number(quantity),
+        totalCost: cost === "" ? null : toCents(Number(cost)),
+        movementDate: movementDate === "" ? null : movementDate,
+        note,
+      });
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        showFieldErrors(error.errors);
+      } else {
+        setGeneralError(getErrorMessage(error));
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    // noValidate: the date's max would otherwise block saving with the browser's own fading tooltip,
+    // instead of the API's message next to the field
+    <form onSubmit={handleSubmit} noValidate>
+      <Stack gap="md">
+        {generalError && <Alert color="red">{generalError}</Alert>}
+        <TextInput
+          ref={productInputRef}
+          label="Producto"
+          value={productText}
+          onChange={(event) => {
+            setProductText(event.currentTarget.value);
+            clearFieldError("productId");
+          }}
+          error={errors.productId?.[0]}
+          autoFocus
+        />
+        <NumberInput
+          ref={quantityInputRef}
+          label="Cantidad"
+          allowDecimal={false}
+          allowNegative={false}
+          // Beyond 9 digits the value no longer fits the API's integer
+          isAllowed={({ value }) => value.length <= 9}
+          hideControls
+          value={quantity}
+          onChange={(value) => {
+            setQuantity(value);
+            clearFieldError("quantity");
+          }}
+          error={errors.quantity?.[0]}
+        />
+        <NumberInput
+          ref={costInputRef}
+          label="Costo total"
+          leftSection="Bs"
+          decimalSeparator=","
+          decimalScale={2}
+          allowNegative={false}
+          // More digits than the API accepts: a barcode scanned here must exceed the limit, not be cut down to a valid cost
+          isAllowed={({ value }) => value.split(".")[0].length <= 7}
+          hideControls
+          value={cost}
+          onChange={(value) => {
+            setCost(value);
+            clearFieldError("totalCost");
+          }}
+          onBlur={() =>
+            setCost((current) =>
+              current === "" ? current : Number(current).toFixed(2),
+            )
+          }
+          error={errors.totalCost?.[0]}
+        />
+        <TextInput
+          ref={dateInputRef}
+          type="date"
+          label="Fecha"
+          max={today()}
+          value={movementDate}
+          onChange={(event) => {
+            setMovementDate(event.currentTarget.value);
+            clearFieldError("movementDate");
+          }}
+          error={errors.movementDate?.[0]}
+        />
+        <TextInput
+          ref={noteInputRef}
+          label="Nota"
+          value={note}
+          onChange={(event) => {
+            setNote(event.currentTarget.value);
+            clearFieldError("note");
+          }}
+          description={`${note.length}/${noteMaxLength}`}
+          inputWrapperOrder={["label", "input", "description", "error"]}
+          error={errors.note?.[0]}
+        />
+        <Button type="submit" loading={saving}>
+          Guardar ingreso
+        </Button>
+      </Stack>
+    </form>
+  );
+}
+
+export default InboundForm;

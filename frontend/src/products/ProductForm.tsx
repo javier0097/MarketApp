@@ -124,7 +124,6 @@ function ProductForm({ product }: { product?: ProductResponse }) {
       return;
     }
 
-    setErrors({});
     setGeneralError(null);
     setLastSaved(null);
     setSaving(true);
