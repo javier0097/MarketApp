@@ -7,6 +7,7 @@ import {
   useCombobox,
 } from "@mantine/core";
 import type { ProductResponse } from "../api/products.ts";
+import { formatMoney } from "../lib/money.ts";
 import {
   findProductByCode,
   matchesSearchWords,
@@ -71,7 +72,10 @@ function ProductPicker({
             }
           }}
           onBlur={() => combobox.closeDropdown()}
-          description={product && `Elegido: ${product.name} · ${product.code}`}
+          description={
+            product &&
+            `Elegido: ${product.name} · ${product.code} · precio de venta ${formatMoney(product.salePrice)}`
+          }
           inputWrapperOrder={["label", "input", "description", "error"]}
           error={error}
           autoFocus

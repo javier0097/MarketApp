@@ -1,21 +1,32 @@
 import { useEffect, useRef, useState, type SubmitEvent } from "react";
-import { Alert, Button, NumberInput, Stack, TextInput } from "@mantine/core";
+import {
+  Alert,
+  Button,
+  NumberInput,
+  Stack,
+  Text,
+  TextInput,
+} from "@mantine/core";
 import {
   getErrorMessage,
   unexpectedErrorMessage,
   ValidationError,
 } from "../api/errors.ts";
-import { createInboundMovement } from "../api/inventoryMovements.ts";
+import {
+  createInboundMovement,
+  getStockSummary,
+  type StockSummaryResponse,
+} from "../api/inventoryMovements.ts";
 import { getProducts, type ProductResponse } from "../api/products.ts";
-import { today } from "../lib/dates.ts";
-import { toCents } from "../lib/money.ts";
+import { formatDate, today } from "../lib/dates.ts";
+import { stockAfterInbound, unitCost } from "../lib/inventory.ts";
+import { formatMoney, toCents } from "../lib/money.ts";
 import { findProductByCode } from "../lib/search.ts";
 import ProductPicker from "./ProductPicker.tsx";
 
 type FieldErrors = Record<string, string[]>;
 
 const noteMaxLength = 500;
-
 function InboundForm() {
   const [products, setProducts] = useState<ProductResponse[] | null>(null);
   const [productText, setProductText] = useState("");
@@ -29,6 +40,10 @@ function InboundForm() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
+  const [loadedSummary, setLoadedSummary] = useState<{
+    productId: number;
+    summary: StockSummaryResponse;
+  } | null>(null);
   const productInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const costInputRef = useRef<HTMLInputElement>(null);
@@ -37,6 +52,15 @@ function InboundForm() {
 
   // Derived on every render, so a code scanned before the products finished loading is recognized when they arrive
   const product = pickedProduct ?? findProductByCode(products, productText);
+  const productId = product?.id;
+  // A summary that arrives for another product is never shown
+  const summary =
+    loadedSummary !== null && loadedSummary.productId === productId
+      ? loadedSummary.summary
+      : null;
+
+  const validQuantity = Number(quantity) >= 1 ? Number(quantity) : null;
+  const costCents = cost === "" ? null : toCents(Number(cost));
 
   useEffect(() => {
     const controller = new AbortController();
@@ -54,6 +78,28 @@ function InboundForm() {
     loadProducts();
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (productId === undefined) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadSummary(id: number) {
+      try {
+        const summary = await getStockSummary(id, controller.signal);
+        setLoadedSummary({ productId: id, summary });
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setGeneralError(getErrorMessage(error));
+        }
+      }
+    }
+
+    loadSummary(productId);
+    return () => controller.abort();
+  }, [productId]);
 
   function clearFieldError(field: string) {
     setErrors((current) => ({ ...current, [field]: [] }));
@@ -87,7 +133,7 @@ function InboundForm() {
       await createInboundMovement({
         productId: product?.id ?? null,
         quantity: quantity === "" ? null : Number(quantity),
-        totalCost: cost === "" ? null : toCents(Number(cost)),
+        totalCost: costCents,
         movementDate: movementDate === "" ? null : movementDate,
         note,
       });
@@ -189,6 +235,45 @@ function InboundForm() {
           inputWrapperOrder={["label", "input", "description", "error"]}
           error={errors.note?.[0]}
         />
+        {product && (
+          <Stack gap="xs">
+            <Text fw={500}>Resumen</Text>
+            {summary === null ? (
+              <Text size="sm">Cargando el stock del producto…</Text>
+            ) : (
+              <>
+                <Text size="sm">
+                  {validQuantity === null
+                    ? `Stock actual: ${summary.stock}`
+                    : `Stock: ${summary.stock} → ${stockAfterInbound(summary.stock, validQuantity)}`}
+                </Text>
+                {validQuantity !== null && costCents !== null && (
+                  <Text size="sm">
+                    Costo unitario:{" "}
+                    {formatMoney(unitCost(costCents, validQuantity))}
+                  </Text>
+                )}
+                <Text size="sm">
+                  Último costo unitario:{" "}
+                  {summary.lastInboundQuantity === null ||
+                  summary.lastInboundTotalCost === null
+                    ? "Sin ingresos anteriores"
+                    : formatMoney(
+                        unitCost(
+                          summary.lastInboundTotalCost,
+                          summary.lastInboundQuantity,
+                        ),
+                      )}
+                </Text>
+              </>
+            )}
+            {movementDate !== "" && movementDate !== today() && (
+              <Text size="sm" fw={700}>
+                Fecha del ingreso: {formatDate(movementDate)} (no es hoy)
+              </Text>
+            )}
+          </Stack>
+        )}
         <Button type="submit" loading={saving}>
           Guardar ingreso
         </Button>

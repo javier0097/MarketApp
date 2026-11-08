@@ -27,3 +27,19 @@ export function createInboundMovement(
     body: JSON.stringify(movement),
   });
 }
+
+export type StockSummaryResponse = {
+  stock: number;
+  lastInboundQuantity: number | null;
+  lastInboundTotalCost: number | null;
+};
+
+export function getStockSummary(
+  productId: number,
+  signal?: AbortSignal,
+): Promise<StockSummaryResponse> {
+  return request(
+    `/api/inventory-movements/stock-summary?productId=${productId}`,
+    { signal },
+  );
+}
