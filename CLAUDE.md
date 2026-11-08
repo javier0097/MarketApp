@@ -173,7 +173,7 @@ information fine. The goal is not accessibility for the elderly; it is that
 processes are easy to follow and easy to re-derive after weeks without using
 them.
 
-- Menu named after tasks, not tables ("Ingresar mercadería", not "Movimientos").
+- Menu named after tasks, not tables ("Ingresar stock", not "Movimientos").
 - Use vocabulary they already know from banking: movimiento, saldo, arqueo,
   comprobante.
 - Multi-step processes shown as numbered steps with a summary before

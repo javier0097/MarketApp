@@ -20,12 +20,12 @@ function App() {
     );
   }
 
-  if (window.location.pathname === "/ingresos/nuevo") {
+  if (window.location.pathname === "/stock/ingresar") {
     return (
       <Container component="main" size="xs" py="xl">
-        <title>Ingresar mercadería - MarketApp</title>
+        <title>Ingresar stock - MarketApp</title>
         <Title order={1} mb="lg">
-          Ingresar mercadería
+          Ingresar stock
         </Title>
         <InboundForm />
       </Container>

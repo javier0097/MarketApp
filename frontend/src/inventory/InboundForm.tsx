@@ -15,6 +15,7 @@ import {
 import {
   createInboundMovement,
   getStockSummary,
+  type InboundMovementResponse,
   type StockSummaryResponse,
 } from "../api/inventoryMovements.ts";
 import { getProducts, type ProductResponse } from "../api/products.ts";
@@ -44,6 +45,11 @@ function InboundForm() {
     productId: number;
     summary: StockSummaryResponse;
   } | null>(null);
+  const [lastSaved, setLastSaved] = useState<{
+    productName: string;
+    movement: InboundMovementResponse;
+  } | null>(null);
+
   const productInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const costInputRef = useRef<HTMLInputElement>(null);
@@ -127,16 +133,29 @@ function InboundForm() {
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (saving) {
+      return;
+    }
+
     setGeneralError(null);
+    setLastSaved(null);
     setSaving(true);
     try {
-      await createInboundMovement({
+      const movement = await createInboundMovement({
         productId: product?.id ?? null,
         quantity: quantity === "" ? null : Number(quantity),
         totalCost: costCents,
         movementDate: movementDate === "" ? null : movementDate,
         note,
       });
+      setLastSaved({ productName: product!.name, movement });
+      setProductText("");
+      setPickedProduct(null);
+      setQuantity("");
+      setCost("");
+      setMovementDate(today());
+      setNote("");
+      productInputRef.current?.focus();
     } catch (error) {
       if (error instanceof ValidationError) {
         const fieldErrors = { ...error.errors };
@@ -161,6 +180,17 @@ function InboundForm() {
     <form onSubmit={handleSubmit} noValidate>
       <Stack gap="md">
         {generalError && <Alert color="red">{generalError}</Alert>}
+        {lastSaved && (
+          <Alert
+            color="green"
+            title="Ingreso guardado"
+            style={{ overflowWrap: "anywhere" }}
+          >
+            {lastSaved.productName} · {lastSaved.movement.quantity} u. ·{" "}
+            {formatMoney(lastSaved.movement.totalCost)} ·{" "}
+            {formatDate(lastSaved.movement.movementDate)}
+          </Alert>
+        )}
         <ProductPicker
           products={products}
           text={productText}
