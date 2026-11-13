@@ -155,10 +155,13 @@ plus an incident reference that appears in the logs.
 
 ### Dates
 
-Stored in **UTC**, converted at display time. `CreatedAt` / `UpdatedAt` (and
-`RecordedAt` on movements) are set explicitly in the services with
-`DateTime.UtcNow`, so it is visible where they come from. `UpdatedAt` equals
-`CreatedAt` on insert.
+Two kinds, stored differently:
+
+- **Instants** (`CreatedAt`, `UpdatedAt`): stored in **UTC**, converted at
+  display time. Set explicitly in the services with `DateTime.UtcNow`, so it
+  is visible where they come from. `UpdatedAt` equals `CreatedAt` on insert.
+- **Calendar dates** (`MovementDate`, when a movement happened): stored as a
+  `DateOnly` without time and never converted, since they are not an instant.
 
 ### UI
 
@@ -170,7 +173,7 @@ information fine. The goal is not accessibility for the elderly; it is that
 processes are easy to follow and easy to re-derive after weeks without using
 them.
 
-- Menu named after tasks, not tables ("Ingresar mercadería", not "Movimientos").
+- Menu named after tasks, not tables ("Ingresar stock", not "Movimientos").
 - Use vocabulary they already know from banking: movimiento, saldo, arqueo,
   comprobante.
 - Multi-step processes shown as numbered steps with a summary before

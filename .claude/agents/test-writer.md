@@ -117,6 +117,11 @@ These describe how tests are written in this project, not how the code works.
 - Imports include the `.ts` extension: `import { toCents } from "./money.ts";`.
 - ESLint blocks unused variables and promise chains (`.then`, `.catch`): use
   `async`/`await`.
+- Tests already run in the store's time zone, `America/La_Paz` (UTC-4 all
+  year): the Vitest config sets it. Change `TZ` only in a test about another
+  time zone, with `vi.stubEnv("TZ", ...)`, then `vi.resetModules()` and a
+  dynamic `import()` of the module, in case it reads the time zone when it
+  loads.
 
 ### Domain
 

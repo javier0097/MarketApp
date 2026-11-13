@@ -26,9 +26,9 @@ Two tables: `Products` and `InventoryMovements`. The entities live in
 | `Type` | `MovementType` | `Inbound = 1`, `Outbound = 2`, stored as an integer |
 | `Quantity` | `int` | Units, always greater than 0 |
 | `Amount` | `int` | Cents, never negative. Cost on inbound, income on outbound, `0` when no money was involved |
-| `MovementDate` | `DateTime` | UTC. When it happened; the user can edit it |
-| `RecordedAt` | `DateTime` | UTC. When it was entered |
-| `RecordedById` | `int?` | Null until authentication exists |
+| `MovementDate` | `DateOnly` | Calendar date, no time. When it happened; the user can edit it |
+| `CreatedAt` | `DateTime` | UTC. When it was entered |
+| `CreatedById` | `int?` | Null until authentication exists |
 | `Note` | `string?` | |
 | `IsVoided` | `bool` | `true` when the movement was cancelled |
 | `VoidReason` | `string?` | Why it was voided |
@@ -57,7 +57,7 @@ by `Type`, so a sign can never be wrong.
 
 **Two dates per movement.** `MovementDate` is when it happened and can be
 edited, so movements written on paper while the app was unavailable can be
-loaded later. `RecordedAt` is when it was entered.
+loaded later. `CreatedAt` is when it was entered.
 
 **Nothing is deleted.** Products are deactivated with `IsActive`, and
 movements are voided with a reason. The database backs this up: deleting a
@@ -67,9 +67,11 @@ product that has movements is rejected (`ON DELETE RESTRICT`).
 `Quantity > 0` and `Amount >= 0`. The API validates first; the constraints
 catch whatever slips past it.
 
-**Dates are UTC.** The services set them with `DateTime.UtcNow`. SQLite does
-not store time zones, so `UtcDateTimeConverter` marks every date read from
-the database as UTC; without it, the browser would show the time shifted.
+**Instants are UTC, calendar dates are not converted.** The services set
+instants with `DateTime.UtcNow`. SQLite does not store time zones, so
+`UtcDateTimeConverter` marks every `DateTime` read from the database as UTC;
+without it, the browser would show the time shifted. `MovementDate` is a
+`DateOnly`: a day with no time, which the converter does not touch.
 
 **User columns are nullable** until authentication exists.
 

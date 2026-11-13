@@ -1,4 +1,5 @@
 import { Container, Title } from "@mantine/core";
+import InboundForm from "./inventory/InboundForm.tsx";
 import ProductEdit from "./products/ProductEdit.tsx";
 import ProductForm from "./products/ProductForm.tsx";
 import ProductList from "./products/ProductList.tsx";
@@ -15,6 +16,18 @@ function App() {
           Editar producto
         </Title>
         <ProductEdit productId={Number(editPath[1])} />
+      </Container>
+    );
+  }
+
+  if (window.location.pathname === "/stock/ingresar") {
+    return (
+      <Container component="main" size="xs" py="xl">
+        <title>Ingresar stock - MarketApp</title>
+        <Title order={1} mb="lg">
+          Ingresar stock
+        </Title>
+        <InboundForm />
       </Container>
     );
   }

@@ -124,7 +124,6 @@ function ProductForm({ product }: { product?: ProductResponse }) {
       return;
     }
 
-    setErrors({});
     setGeneralError(null);
     setLastSaved(null);
     setSaving(true);
@@ -138,11 +137,13 @@ function ProductForm({ product }: { product?: ProductResponse }) {
       }
 
       setLastSaved(await createProduct({ code, name, salePrice }));
+      // Focus first: leaving a field makes Mantine's NumberInput emit its old value again,
+      // which would undo the clearing below if it came after it
+      nameInputRef.current?.focus();
       setName("");
       setPrice("");
       setCode("");
       setWithoutBarcode(false);
-      nameInputRef.current?.focus();
     } catch (error) {
       if (error instanceof ValidationError) {
         showFieldErrors(error.errors);
