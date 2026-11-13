@@ -7,7 +7,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { formatDate, formatDateTime, today } from "./dates.ts";
+import { formatDate, formatDateTime, oneYearBefore, today } from "./dates.ts";
 
 // "Local time" is the time zone of the device running the app. The Vitest
 // config fixes it to America/La_Paz, so the results do not depend on the
@@ -164,5 +164,13 @@ describe("formatDate", () => {
     const result = formatDate("2026-11-08");
 
     expect(result).toBe("domingo, 8 de noviembre de 2026");
+  });
+});
+
+describe("oneYearBefore", () => {
+  it("Returns_the_same_day_and_month_of_the_previous_year", () => {
+    const result = oneYearBefore("2026-11-12");
+
+    expect(result).toBe("2025-11-12");
   });
 });

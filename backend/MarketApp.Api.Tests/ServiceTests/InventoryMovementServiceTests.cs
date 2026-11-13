@@ -159,6 +159,33 @@ public class InventoryMovementServiceTests
     }
 
     [Fact]
+    public async Task Accepts_a_movement_date_exactly_one_year_before_today()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movementDate = Today().AddYears(-1);
+
+        var response = await CreateInboundAsync(database, NewRequest(product.Id, movementDate));
+
+        var movement = await FindMovementAsync(database, response.Id);
+        Assert.Equal(movementDate, movement.MovementDate);
+    }
+
+    [Fact]
+    public async Task Rejects_a_movement_date_more_than_one_year_before_today()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var oneYearAgo = Today().AddYears(-1);
+
+        var exception = await Assert.ThrowsAsync<FieldValidationException>(
+            () => CreateInboundAsync(database, NewRequest(product.Id, oneYearAgo.AddDays(-1))));
+
+        Assert.Equal("MovementDate", exception.Field);
+        Assert.Equal($"La fecha no puede ser anterior al {oneYearAgo:dd'/'MM'/'yyyy}.", exception.Message);
+    }
+
+    [Fact]
     public async Task Rejects_a_product_that_does_not_exist()
     {
         using var database = new TestDatabase();

@@ -28,6 +28,10 @@ export function today(): string {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
+export function oneYearBefore(date: string): string {
+  return `${Number(date.slice(0, 4)) - 1}${date.slice(4)}`;
+}
+
 // Built from its parts as a local date: new Date("2026-11-03") would read it as UTC midnight, the day before in Bolivia
 export function formatDate(date: string): string {
   const [year, month, day] = date.split("-").map(Number);

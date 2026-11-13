@@ -6,6 +6,7 @@ using MarketApp.Api.Enums;
 using MarketApp.Api.Exceptions;
 using MarketApp.Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace MarketApp.Api.Services;
 
@@ -20,9 +21,18 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
         }
 
         var movementDate = request.MovementDate!.Value;
-        if (movementDate > DateOnly.FromDateTime(DateTime.Now))
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        if (movementDate > today)
         {
             throw new FieldValidationException(nameof(CreateInboundMovementRequest.MovementDate), "La fecha no puede ser posterior a hoy.");
+        }
+
+        var earliest = today.AddYears(-1);
+        if (movementDate < earliest)
+        {
+            throw new FieldValidationException(
+                nameof(CreateInboundMovementRequest.MovementDate),
+                $"La fecha no puede ser anterior al {earliest.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}.");
         }
 
         var movement = new InventoryMovement

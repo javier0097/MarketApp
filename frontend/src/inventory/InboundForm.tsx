@@ -19,10 +19,18 @@ import {
   type StockSummaryResponse,
 } from "../api/inventoryMovements.ts";
 import { getProducts, type ProductResponse } from "../api/products.ts";
-import { formatDate, today } from "../lib/dates.ts";
-import { stockAfterInbound, unitCost } from "../lib/inventory.ts";
+import { formatDate, oneYearBefore, today } from "../lib/dates.ts";
+import {
+  formatQuantity,
+  stockAfterInbound,
+  unitCost,
+} from "../lib/inventory.ts";
 import { formatMoney, toCents } from "../lib/money.ts";
-import { findProductByCode } from "../lib/search.ts";
+import {
+  findProductByCode,
+  matchesSearchWords,
+  toSearchWords,
+} from "../lib/search.ts";
 import ProductPicker from "./ProductPicker.tsx";
 
 type FieldErrors = Record<string, string[]>;
@@ -149,20 +157,28 @@ function InboundForm() {
         note,
       });
       setLastSaved({ productName: product!.name, movement });
+      // Focus first: leaving a field makes Mantine's NumberInput emit its old value again,
+      // which would undo the clearing below if it came after it
+      productInputRef.current?.focus();
       setProductText("");
       setPickedProduct(null);
       setQuantity("");
       setCost("");
       setMovementDate(today());
       setNote("");
-      productInputRef.current?.focus();
     } catch (error) {
       if (error instanceof ValidationError) {
         const fieldErrors = { ...error.errors };
         const typed = productText.trim();
         if (fieldErrors.productId && product === null && typed !== "") {
+          const words = toSearchWords(typed);
+          const hasMatches = products?.some((candidate) =>
+            matchesSearchWords(candidate, words),
+          );
           fieldErrors.productId = [
-            `«${typed}» no es el nombre ni el código de ningún producto. Elija uno en la lista que aparece al escribir o escanee el código de barras del producto.`,
+            hasMatches
+              ? `Elija el producto en la lista que aparece al escribir «${typed}».`
+              : `«${typed}» no es el nombre ni el código de ningún producto. Elija uno en la lista que aparece al escribir o escanee el código de barras del producto.`,
           ];
         }
         showFieldErrors(fieldErrors);
@@ -186,7 +202,8 @@ function InboundForm() {
             title="Ingreso guardado"
             style={{ overflowWrap: "anywhere" }}
           >
-            {lastSaved.productName} · {lastSaved.movement.quantity} u. ·{" "}
+            {lastSaved.productName} ·{" "}
+            {formatQuantity(lastSaved.movement.quantity)} u. ·{" "}
             {formatMoney(lastSaved.movement.totalCost)} ·{" "}
             {formatDate(lastSaved.movement.movementDate)}
           </Alert>
@@ -245,6 +262,7 @@ function InboundForm() {
           ref={dateInputRef}
           type="date"
           label="Fecha"
+          min={oneYearBefore(today())}
           max={today()}
           value={movementDate}
           onChange={(event) => {
@@ -274,8 +292,8 @@ function InboundForm() {
               <>
                 <Text size="sm">
                   {validQuantity === null
-                    ? `Stock actual: ${summary.stock}`
-                    : `Stock: ${summary.stock} → ${stockAfterInbound(summary.stock, validQuantity)}`}
+                    ? `Stock actual: ${formatQuantity(summary.stock)}`
+                    : `Stock: ${formatQuantity(summary.stock)} → ${formatQuantity(stockAfterInbound(summary.stock, validQuantity))}`}
                 </Text>
                 {validQuantity !== null && costCents !== null && (
                   <Text size="sm">

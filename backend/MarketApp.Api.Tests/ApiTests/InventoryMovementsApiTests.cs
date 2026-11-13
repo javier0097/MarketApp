@@ -25,7 +25,8 @@ public class InventoryMovementsApiTests
 
     private const int Quantity = 24;
     private const int TotalCost = 18000;
-    private const string MovementDate = "2026-11-01";
+    private static readonly DateOnly Yesterday = DateOnly.FromDateTime(DateTime.Now).AddDays(-1);
+    private static readonly string MovementDate = Yesterday.ToString("yyyy-MM-dd");
     private const string Note = "Compra al proveedor";
 
     // ---------- POST /api/inventory-movements/inbound ----------
@@ -48,7 +49,7 @@ public class InventoryMovementsApiTests
         Assert.Equal(productId, body.ProductId);
         Assert.Equal(Quantity, body.Quantity);
         Assert.Equal(TotalCost, body.TotalCost);
-        Assert.Equal(new DateOnly(2026, 11, 1), body.MovementDate);
+        Assert.Equal(Yesterday, body.MovementDate);
         Assert.Equal(Note, body.Note);
         Assert.InRange(body.CreatedAt, before, after);
     }
@@ -82,15 +83,15 @@ public class InventoryMovementsApiTests
     }
 
     [Theory]
-    [InlineData("""{"productId":1,"quantity":24,"totalCost":18000,"movementDate":"2026-11-01"}""")]
-    [InlineData("""{"productId":1,"quantity":24,"totalCost":18000,"movementDate":"2026-11-01","note":""}""")]
+    [InlineData("""{"productId":1,"quantity":24,"totalCost":18000,"movementDate":"{date}"}""")]
+    [InlineData("""{"productId":1,"quantity":24,"totalCost":18000,"movementDate":"{date}","note":""}""")]
     public async Task Create_accepts_a_request_without_a_note_or_with_an_empty_note(string json)
     {
         using var factory = new ApiFactory();
         using var client = factory.CreateClient();
         await CreateProductAsync(client);
 
-        using var response = await PostRawJsonAsync(client, json);
+        using var response = await PostRawJsonAsync(client, json.Replace("{date}", MovementDate));
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
@@ -252,7 +253,7 @@ public class InventoryMovementsApiTests
         using var client = factory.CreateClient();
         var productId = await CreateProductAsync(client);
 
-        using var response = await PostInboundAsync(client, productId, movementDate: Tomorrow());
+        using var response = await PostInboundAsync(client, productId, movementDate: DaysFromToday(1));
         var body = await ReadValidationProblemAsync(response);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -269,8 +270,8 @@ public class InventoryMovementsApiTests
         using var factory = new ApiFactory();
         using var client = factory.CreateClient();
         var productId = await CreateProductAsync(client);
-        using var first = await PostInboundAsync(client, productId, 24, 18000, "2026-11-01");
-        using var second = await PostInboundAsync(client, productId, 12, 9600, "2026-11-02");
+        using var first = await PostInboundAsync(client, productId, 24, 18000, DaysFromToday(-2));
+        using var second = await PostInboundAsync(client, productId, 12, 9600, DaysFromToday(-1));
 
         using var response = await GetStockSummaryAsync(client, productId);
         var body = await response.Content.ReadFromJsonAsync<StockSummaryBody>(TestContext.Current.CancellationToken);
@@ -298,8 +299,8 @@ public class InventoryMovementsApiTests
         Assert.Equal(404, body.Status);
     }
 
-    private static string Tomorrow() =>
-        DateOnly.FromDateTime(DateTime.Now).AddDays(1).ToString("yyyy-MM-dd");
+    private static string DaysFromToday(int days) =>
+        DateOnly.FromDateTime(DateTime.Now).AddDays(days).ToString("yyyy-MM-dd");
 
     private static async Task<int> CreateProductAsync(HttpClient client)
     {
@@ -318,11 +319,11 @@ public class InventoryMovementsApiTests
         int productId,
         int quantity = Quantity,
         int totalCost = TotalCost,
-        string movementDate = MovementDate,
+        string? movementDate = null,
         string note = Note) =>
         client.PostAsJsonAsync(
             InboundUrl,
-            new { productId, quantity, totalCost, movementDate, note },
+            new { productId, quantity, totalCost, movementDate = movementDate ?? MovementDate, note },
             TestContext.Current.CancellationToken);
 
     private static Task<HttpResponseMessage> GetStockSummaryAsync(HttpClient client, int productId) =>
