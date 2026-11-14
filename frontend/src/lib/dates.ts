@@ -28,6 +28,10 @@ export function today(): string {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
+export function formatShortDate(date: string): string {
+  return date.split("-").reverse().join("/");
+}
+
 export function oneYearBefore(date: string): string {
   return `${Number(date.slice(0, 4)) - 1}${date.slice(4)}`;
 }
