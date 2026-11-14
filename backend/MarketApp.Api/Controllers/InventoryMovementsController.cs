@@ -8,6 +8,13 @@ namespace MarketApp.Api.Controllers;
 [Route("api/inventory-movements")]
 public class InventoryMovementsController(IInventoryMovementService inventoryMovementService) : ControllerBase
 {
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var movements = await inventoryMovementService.GetAllAsync();
+        return Ok(movements);
+    }
+
     [HttpPost("inbound")]
     public async Task<IActionResult> CreateInbound(CreateInboundMovementRequest request)
     {

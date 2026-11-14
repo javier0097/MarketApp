@@ -56,6 +56,13 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
             movement.Id, movement.ProductId, movement.Quantity, movement.Amount, movement.MovementDate, movement.Note, movement.CreatedAt);
     }
 
+    public Task<List<InventoryMovementResponse>> GetAllAsync() =>
+        db.InventoryMovements
+            .OrderByDescending(m => m.CreatedAt)
+            .Select(m => new InventoryMovementResponse(
+                m.Id, m.ProductId, m.Product.Code, m.Product.Name, m.Type, m.Quantity, m.Amount, m.MovementDate, m.Note, m.CreatedAt))
+            .ToListAsync();
+
     public async Task<StockSummaryResponse> GetStockSummaryAsync(int productId)
     {
         if (!await db.Products.AnyAsync(p => p.Id == productId))
