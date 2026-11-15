@@ -1,5 +1,15 @@
-import { useEffect, useState } from "react";
-import { Alert, Loader, Stack, Table, Text, TextInput } from "@mantine/core";
+import { useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  CloseButton,
+  Group,
+  Loader,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Tooltip,
+} from "@mantine/core";
 import { getErrorMessage } from "../api/errors.ts";
 import {
   getInventoryMovements,
@@ -14,6 +24,7 @@ import {
 } from "../lib/dates.ts";
 import { formatQuantity, unitCost } from "../lib/inventory.ts";
 import { formatMoney } from "../lib/money.ts";
+import { matchesSearchWords, toSearchWords } from "../lib/search.ts";
 
 const typeLabels: Record<MovementType, string> = {
   Inbound: "Ingreso",
@@ -27,6 +38,8 @@ function MovementList() {
   const [error, setError] = useState<string | null>(null);
   const [dateText, setDateText] = useState(today);
   const [selectedDate, setSelectedDate] = useState(today);
+  const [search, setSearch] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -59,28 +72,72 @@ function MovementList() {
       : dateText > today()
         ? "La fecha no puede ser posterior a hoy."
         : undefined;
-  const dayMovements = movements.filter(
-    (movement) => localDate(new Date(movement.createdAt)) === selectedDate,
-  );
+  const words = toSearchWords(search);
+  const searching = words.length > 0;
+  const listedMovements = searching
+    ? movements.filter((movement) =>
+        matchesSearchWords(
+          { name: movement.productName, code: movement.productCode },
+          words,
+        ),
+      )
+    : movements.filter(
+        (movement) => localDate(new Date(movement.createdAt)) === selectedDate,
+      );
+  const single = listedMovements.length === 1;
+  const count = `${listedMovements.length} ${single ? "movimiento" : "movimientos"}`;
 
   return (
     <Stack gap="lg">
-      <TextInput
-        type="date"
-        label="Fecha de registro"
-        max={today()}
-        value={dateText}
-        onChange={(event) => {
-          const value = event.currentTarget.value;
-          setDateText(value);
-          if (value !== "" && value <= today()) {
-            setSelectedDate(value);
+      <Group align="flex-start">
+        <TextInput
+          ref={searchInputRef}
+          label="Buscar"
+          description="Por nombre o código del producto"
+          inputWrapperOrder={["label", "input", "description"]}
+          value={search}
+          onChange={(event) => setSearch(event.currentTarget.value)}
+          rightSectionPointerEvents="all"
+          rightSection={
+            search && (
+              <Tooltip label="Limpiar búsqueda">
+                <CloseButton
+                  aria-label="Limpiar búsqueda"
+                  onClick={() => {
+                    setSearch("");
+                    searchInputRef.current?.focus();
+                  }}
+                />
+              </Tooltip>
+            )
           }
-        }}
-        error={dateError}
-        maw={220}
-      />
-      <MovementTable movements={dayMovements} />
+          w={400}
+          autoFocus
+        />
+        {!searching && (
+          <TextInput
+            type="date"
+            label="Fecha de registro"
+            max={today()}
+            value={dateText}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              setDateText(value);
+              if (value !== "" && value <= today()) {
+                setSelectedDate(value);
+              }
+            }}
+            error={dateError}
+            w={220}
+          />
+        )}
+      </Group>
+      <Text size="sm" style={{ overflowWrap: "anywhere" }}>
+        {searching
+          ? `${count} de «${search.trim()}» en todas las fechas`
+          : `${count} ${single ? "registrado" : "registrados"} el ${formatShortDate(selectedDate)}`}
+      </Text>
+      <MovementTable movements={listedMovements} />
     </Stack>
   );
 }
