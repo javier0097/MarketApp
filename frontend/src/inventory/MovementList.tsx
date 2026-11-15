@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Button,
   CloseButton,
   Group,
   Loader,
@@ -132,12 +133,37 @@ function MovementList() {
           />
         )}
       </Group>
-      <Text size="sm" style={{ overflowWrap: "anywhere" }}>
-        {searching
-          ? `${count} de «${search.trim()}» en todas las fechas`
-          : `${count} ${single ? "registrado" : "registrados"} el ${formatShortDate(selectedDate)}`}
-      </Text>
-      <MovementTable movements={listedMovements} />
+      {listedMovements.length === 0 ? (
+        searching ? (
+          <Text style={{ overflowWrap: "anywhere" }}>
+            Ningún producto coincide con «{search.trim()}». Revise lo escrito o
+            busque por otra parte del nombre o del código.
+          </Text>
+        ) : selectedDate === today() ? (
+          <Stack gap="md" align="flex-start">
+            <Text>
+              Todavía no se registraron movimientos hoy. Aquí aparecen los
+              ingresos y salidas de stock del día.
+            </Text>
+            <Button component="a" href="/stock/ingresar">
+              Ingresar stock
+            </Button>
+          </Stack>
+        ) : (
+          <Text>
+            No se registraron movimientos el {formatShortDate(selectedDate)}.
+          </Text>
+        )
+      ) : (
+        <>
+          <Text size="sm" style={{ overflowWrap: "anywhere" }}>
+            {searching
+              ? `${count} de «${search.trim()}» en todas las fechas`
+              : `${count} ${single ? "registrado" : "registrados"} el ${formatShortDate(selectedDate)}`}
+          </Text>
+          <MovementTable movements={listedMovements} />
+        </>
+      )}
     </Stack>
   );
 }
