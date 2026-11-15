@@ -422,6 +422,122 @@ public class InventoryMovementServiceTests
         Assert.Equal(ProductNotFoundMessage, exception.Message);
     }
 
+    // ---------- GetAllAsync ----------
+
+    [Fact]
+    public async Task Returns_an_empty_list_when_there_are_no_movements()
+    {
+        using var database = new TestDatabase();
+        await SeedProductAsync(database);
+
+        var movements = await GetAllAsync(database);
+
+        Assert.Empty(movements);
+    }
+
+    // The movement dates go the opposite way to the creation times, so ordering by
+    // the movement date would give the reverse list.
+    [Fact]
+    public async Task Returns_the_movements_from_the_latest_creation_time_to_the_earliest()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var first = NewInbound(product.Id, 10, 5000, October(20), createdAt: OctoberAt(5, 12));
+        var last = NewInbound(product.Id, 20, 9000, October(1), createdAt: OctoberAt(20, 12));
+        var middle = NewInbound(product.Id, 30, 14000, October(10), createdAt: OctoberAt(10, 12));
+        await SeedMovementsAsync(database, first, last, middle);
+
+        var movements = await GetAllAsync(database);
+
+        Assert.Equal(new[] { last.Id, middle.Id, first.Id }, movements.Select(m => m.Id));
+    }
+
+    [Fact]
+    public async Task Includes_inbound_and_outbound_movements()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var inbound = NewInbound(product.Id, 24, 18000, October(1));
+        var outbound = NewOutbound(product.Id, 5, October(2));
+        await SeedMovementsAsync(database, inbound, outbound);
+
+        var movements = await GetAllAsync(database);
+
+        Assert.Equal(new[] { inbound.Id, outbound.Id }, movements.Select(m => m.Id).Order());
+    }
+
+    [Fact]
+    public async Task Includes_voided_movements()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var valid = NewInbound(product.Id, 24, 18000, October(1));
+        var voided = NewInbound(product.Id, 12, 9600, October(2), isVoided: true);
+        await SeedMovementsAsync(database, valid, voided);
+
+        var movements = await GetAllAsync(database);
+
+        Assert.Equal(new[] { valid.Id, voided.Id }, movements.Select(m => m.Id).Order());
+    }
+
+    [Fact]
+    public async Task Includes_the_movements_of_inactive_products()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database, isActive: false);
+        var movement = NewInbound(product.Id, 24, 18000, October(1));
+        await SeedMovementsAsync(database, movement);
+
+        var movements = await GetAllAsync(database);
+
+        Assert.Equal(movement.Id, Assert.Single(movements).Id);
+    }
+
+    [Fact]
+    public async Task Returns_every_field_of_the_movement()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewOutbound(product.Id, 3, October(8));
+        movement.Note = "Venta al contado";
+        movement.CreatedAt = OctoberAt(9, 15);
+        await SeedMovementsAsync(database, movement);
+
+        var response = Assert.Single(await GetAllAsync(database));
+
+        Assert.Equal(movement.Id, response.Id);
+        Assert.Equal(product.Id, response.ProductId);
+        Assert.Equal("TMV00001", response.ProductCode);
+        Assert.Equal("Producto TMV00001", response.ProductName);
+        Assert.Equal(MovementType.Outbound, response.Type);
+        Assert.Equal(3, response.Quantity);
+        Assert.Equal(3750, response.Amount);
+        Assert.Equal(October(8), response.MovementDate);
+        Assert.Equal("Venta al contado", response.Note);
+        Assert.Equal(OctoberAt(9, 15), response.CreatedAt);
+    }
+
+    [Fact]
+    public async Task Returns_the_creation_time_in_utc()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        await SeedMovementsAsync(database, NewInbound(product.Id, 24, 18000, October(1)));
+
+        var response = Assert.Single(await GetAllAsync(database));
+
+        Assert.Equal(DateTimeKind.Utc, response.CreatedAt.Kind);
+    }
+
+    private static DateTime OctoberAt(int day, int hour) => new(2026, 10, day, hour, 0, 0, DateTimeKind.Utc);
+
+    private static async Task<List<InventoryMovementResponse>> GetAllAsync(TestDatabase database)
+    {
+        using var context = database.CreateContext();
+        var service = new InventoryMovementService(context, NullLogger<InventoryMovementService>.Instance);
+        return await service.GetAllAsync();
+    }
+
     private static DateOnly Today() => DateOnly.FromDateTime(DateTime.Now);
 
     private static DateOnly October(int day) => new(2026, 10, day);
