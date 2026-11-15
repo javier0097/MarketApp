@@ -136,8 +136,9 @@ function MovementList() {
       {listedMovements.length === 0 ? (
         searching ? (
           <Text style={{ overflowWrap: "anywhere" }}>
-            Ningún producto coincide con «{search.trim()}». Revise lo escrito o
-            busque por otra parte del nombre o del código.
+            No se encontraron movimientos de «{search.trim()}». Puede que el
+            producto todavía no tenga movimientos, o que lo escrito no coincida
+            con ningún producto registrado.
           </Text>
         ) : selectedDate === today() ? (
           <Stack gap="md" align="flex-start">
@@ -150,9 +151,7 @@ function MovementList() {
             </Button>
           </Stack>
         ) : (
-          <Text>
-            No se registraron movimientos el {formatShortDate(selectedDate)}.
-          </Text>
+          <Text>No se registraron movimientos en la fecha elegida.</Text>
         )
       ) : (
         <>
@@ -207,7 +206,7 @@ function MovementTable({
             </Table.Td>
             <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}>
               {movement.type === "Inbound" &&
-                formatMoney(unitCost(movement.amount, movement.quantity))}
+                formatMoney(unitCost(movement.amount, movement.quantity), 3)}
             </Table.Td>
             <Table.Td style={{ overflowWrap: "anywhere" }}>
               {movement.note}
