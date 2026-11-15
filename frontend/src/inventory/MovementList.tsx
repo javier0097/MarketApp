@@ -145,7 +145,7 @@ function MovementList() {
               Todavía no se registraron movimientos hoy. Aquí aparecen los
               ingresos y salidas de stock del día.
             </Text>
-            <Button component="a" href="/stock/ingresar">
+            <Button component="a" href="/inventario/ingresar">
               Ingresar stock
             </Button>
           </Stack>

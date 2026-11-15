@@ -21,7 +21,7 @@ function App() {
     );
   }
 
-  if (window.location.pathname === "/stock/ingresar") {
+  if (window.location.pathname === "/inventario/ingresar") {
     return (
       <Container component="main" size="xs" py="xl">
         <title>Ingresar stock - MarketApp</title>
