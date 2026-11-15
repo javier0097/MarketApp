@@ -21,11 +21,14 @@ export function formatDateTime(isoDate: string): string {
   return dateTimeFormat.format(new Date(isoDate));
 }
 
+export function localDate(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 export function today(): string {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${month}-${day}`;
+  return localDate(new Date());
 }
 
 export function formatShortDate(date: string): string {

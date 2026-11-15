@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
-import { Alert, Loader, Table, Text } from "@mantine/core";
+import { Alert, Loader, Stack, Table, Text, TextInput } from "@mantine/core";
 import { getErrorMessage } from "../api/errors.ts";
 import {
   getInventoryMovements,
   type InventoryMovementResponse,
   type MovementType,
 } from "../api/inventoryMovements.ts";
-import { formatDateTime, formatShortDate } from "../lib/dates.ts";
+import {
+  formatDateTime,
+  formatShortDate,
+  localDate,
+  today,
+} from "../lib/dates.ts";
 import { formatQuantity, unitCost } from "../lib/inventory.ts";
 import { formatMoney } from "../lib/money.ts";
 
@@ -20,6 +25,8 @@ function MovementList() {
     InventoryMovementResponse[] | null
   >(null);
   const [error, setError] = useState<string | null>(null);
+  const [dateText, setDateText] = useState(today);
+  const [selectedDate, setSelectedDate] = useState(today);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -46,7 +53,36 @@ function MovementList() {
     return <Loader />;
   }
 
-  return <MovementTable movements={movements} />;
+  const dateError =
+    dateText === ""
+      ? "Complete la fecha para ver sus movimientos."
+      : dateText > today()
+        ? "La fecha no puede ser posterior a hoy."
+        : undefined;
+  const dayMovements = movements.filter(
+    (movement) => localDate(new Date(movement.createdAt)) === selectedDate,
+  );
+
+  return (
+    <Stack gap="lg">
+      <TextInput
+        type="date"
+        label="Fecha de registro"
+        max={today()}
+        value={dateText}
+        onChange={(event) => {
+          const value = event.currentTarget.value;
+          setDateText(value);
+          if (value !== "" && value <= today()) {
+            setSelectedDate(value);
+          }
+        }}
+        error={dateError}
+        maw={220}
+      />
+      <MovementTable movements={dayMovements} />
+    </Stack>
+  );
 }
 
 function MovementTable({
