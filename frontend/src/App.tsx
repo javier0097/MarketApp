@@ -1,5 +1,6 @@
 import { Container, Title } from "@mantine/core";
 import InboundForm from "./inventory/InboundForm.tsx";
+import MovementList from "./inventory/MovementList.tsx";
 import ProductEdit from "./products/ProductEdit.tsx";
 import ProductForm from "./products/ProductForm.tsx";
 import ProductList from "./products/ProductList.tsx";
@@ -20,7 +21,7 @@ function App() {
     );
   }
 
-  if (window.location.pathname === "/stock/ingresar") {
+  if (window.location.pathname === "/inventario/ingresar") {
     return (
       <Container component="main" size="xs" py="xl">
         <title>Ingresar stock - MarketApp</title>
@@ -28,6 +29,18 @@ function App() {
           Ingresar stock
         </Title>
         <InboundForm />
+      </Container>
+    );
+  }
+
+  if (window.location.pathname === "/inventario/movimientos") {
+    return (
+      <Container component="main" size="xl" py="xl">
+        <title>Movimientos de inventario - MarketApp</title>
+        <Title order={1} mb="lg">
+          Movimientos de inventario
+        </Title>
+        <MovementList />
       </Container>
     );
   }

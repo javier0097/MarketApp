@@ -287,4 +287,111 @@ describe("formatMoney", () => {
 
     expect(text).toBe("Bs 19,99");
   });
+
+  it.each([
+    { cents: 1234, fractionDigits: 3, expected: "Bs 12,340" },
+    { cents: 7, fractionDigits: 3, expected: "Bs 0,070" },
+    { cents: 1234, fractionDigits: 4, expected: "Bs 12,3400" },
+  ])(
+    "pads with zeros when asked for more decimals than the cents have: $cents with $fractionDigits -> $expected",
+    ({ cents, fractionDigits, expected }) => {
+      const text = formatMoney(cents, fractionDigits);
+
+      expect(text).toBe(expected);
+    },
+  );
+
+  it.each([
+    { cents: 1234.5, fractionDigits: 3, expected: "Bs 12,345" },
+    { cents: 0.5, fractionDigits: 3, expected: "Bs 0,005" },
+  ])(
+    "shows the fraction of a cent when the decimals allow it: $cents with $fractionDigits -> $expected",
+    ({ cents, fractionDigits, expected }) => {
+      const text = formatMoney(cents, fractionDigits);
+
+      expect(text).toBe(expected);
+    },
+  );
+
+  it("shows no decimal separator with zero decimals", () => {
+    const cents = 1200;
+
+    const text = formatMoney(cents, 0);
+
+    expect(text).toBe("Bs 12");
+  });
+
+  it("keeps the trailing zero with one decimal", () => {
+    const cents = 1200;
+
+    const text = formatMoney(cents, 1);
+
+    expect(text).toBe("Bs 12,0");
+  });
+
+  it.each([
+    { cents: 1234, fractionDigits: 1, expected: "Bs 12,3" },
+    { cents: 1234.4, fractionDigits: 2, expected: "Bs 12,34" },
+  ])(
+    "rounds down when the hidden digits are below half: $cents with $fractionDigits -> $expected",
+    ({ cents, fractionDigits, expected }) => {
+      const text = formatMoney(cents, fractionDigits);
+
+      expect(text).toBe(expected);
+    },
+  );
+
+  it.each([
+    { cents: 1267, fractionDigits: 0, expected: "Bs 13" },
+    { cents: 1267, fractionDigits: 1, expected: "Bs 12,7" },
+    { cents: 1234.6, fractionDigits: 2, expected: "Bs 12,35" },
+  ])(
+    "rounds up when the hidden digits are above half: $cents with $fractionDigits -> $expected",
+    ({ cents, fractionDigits, expected }) => {
+      const text = formatMoney(cents, fractionDigits);
+
+      expect(text).toBe(expected);
+    },
+  );
+
+  it.each([
+    { cents: 1250, fractionDigits: 0, expected: "Bs 13" },
+    { cents: 115, fractionDigits: 1, expected: "Bs 1,2" },
+    { cents: 1235, fractionDigits: 1, expected: "Bs 12,4" },
+    { cents: 1234.5, fractionDigits: 2, expected: "Bs 12,35" },
+    { cents: 1234.55, fractionDigits: 3, expected: "Bs 12,346" },
+  ])(
+    "rounds an exact half up: $cents with $fractionDigits -> $expected",
+    ({ cents, fractionDigits, expected }) => {
+      const text = formatMoney(cents, fractionDigits);
+
+      expect(text).toBe(expected);
+    },
+  );
+
+  it.each([
+    { cents: 99999, fractionDigits: 0, expected: "Bs 1.000" },
+    { cents: 99999, fractionDigits: 1, expected: "Bs 1.000,0" },
+    { cents: 99999.7, fractionDigits: 2, expected: "Bs 1.000,00" },
+  ])(
+    "adds the thousands separator when rounding up reaches one thousand: $cents with $fractionDigits -> $expected",
+    ({ cents, fractionDigits, expected }) => {
+      const text = formatMoney(cents, fractionDigits);
+
+      expect(text).toBe(expected);
+    },
+  );
+
+  it.each([
+    { cents: 49, fractionDigits: 0, expected: "Bs 0" },
+    { cents: 4, fractionDigits: 1, expected: "Bs 0,0" },
+    { cents: 0.4, fractionDigits: 2, expected: "Bs 0,00" },
+  ])(
+    "rounds an amount too small for the decimals shown down to zero: $cents with $fractionDigits -> $expected",
+    ({ cents, fractionDigits, expected }) => {
+      const text = formatMoney(cents, fractionDigits);
+
+      expect(text).toBe(expected);
+    },
+  );
 });

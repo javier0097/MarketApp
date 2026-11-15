@@ -1,13 +1,12 @@
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import {
-  afterAll,
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
-import { formatDate, formatDateTime, oneYearBefore, today } from "./dates.ts";
+  formatDate,
+  formatDateTime,
+  formatShortDate,
+  localDate,
+  oneYearBefore,
+  today,
+} from "./dates.ts";
 
 // "Local time" is the time zone of the device running the app. The Vitest
 // config fixes it to America/La_Paz, so the results do not depend on the
@@ -80,68 +79,35 @@ describe("formatDateTime in another time zone", () => {
   });
 });
 
-// The clock is fixed on dates far from the day the tests run, so a function that
-// ignored it could not pass by coincidence. America/La_Paz is UTC-4 all year:
-// a local day runs from 04:00 UTC to 03:59:59.999 UTC of the next day.
-describe("today in America/La_Paz", () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("Returns_the_local_date_as_year_month_day", () => {
-    vi.setSystemTime(new Date("2025-07-14T15:00:00Z"));
-
-    const result = today();
-
-    expect(result).toBe("2025-07-14");
-  });
-
-  it("Pads_the_month_and_the_day_with_a_leading_zero", () => {
-    vi.setSystemTime(new Date("2025-03-05T15:00:00Z"));
-
-    const result = today();
+// America/La_Paz is UTC-4 all year: a local day runs from 04:00 UTC to
+// 03:59:59.999 UTC of the next day.
+describe("localDate in America/La_Paz", () => {
+  it("Returns_the_local_date_as_year_month_day_with_leading_zeros", () => {
+    const result = localDate(new Date("2025-03-05T15:00:00Z"));
 
     expect(result).toBe("2025-03-05");
   });
 
   it("Keeps_the_same_date_until_the_last_millisecond_of_the_local_day", () => {
-    vi.setSystemTime(new Date("2025-07-15T03:59:59.999Z"));
-
-    const result = today();
+    const result = localDate(new Date("2025-07-15T03:59:59.999Z"));
 
     expect(result).toBe("2025-07-14");
   });
 
   it("Changes_the_date_at_local_midnight", () => {
-    vi.setSystemTime(new Date("2025-07-15T04:00:00Z"));
-
-    const result = today();
+    const result = localDate(new Date("2025-07-15T04:00:00Z"));
 
     expect(result).toBe("2025-07-15");
   });
 
   it("Returns_the_last_day_of_the_year_when_it_is_already_new_year_in_utc", () => {
-    vi.setSystemTime(new Date("2026-01-01T03:59:00Z"));
-
-    const result = today();
+    const result = localDate(new Date("2026-01-01T03:59:00Z"));
 
     expect(result).toBe("2025-12-31");
   });
 });
 
-describe("today in another time zone", () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
+describe("localDate in another time zone", () => {
   afterAll(() => {
     vi.unstubAllEnvs();
   });
@@ -150,12 +116,28 @@ describe("today in another time zone", () => {
   it("Uses_the_time_zone_of_the_device_running_it", async () => {
     vi.resetModules();
     vi.stubEnv("TZ", "Asia/Tokyo");
-    const { today } = await import("./dates.ts");
-    vi.setSystemTime(new Date("2025-07-14T15:00:00Z"));
+    const { localDate } = await import("./dates.ts");
+
+    const result = localDate(new Date("2025-07-14T15:00:00Z"));
+
+    expect(result).toBe("2025-07-15");
+  });
+});
+
+// The clock is fixed on a date far from the day the tests run, so a function
+// that ignored it could not pass by coincidence.
+describe("today", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("Returns_the_local_date_of_the_current_time", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2025-07-15T03:59:59.999Z"));
 
     const result = today();
 
-    expect(result).toBe("2025-07-15");
+    expect(result).toBe("2025-07-14");
   });
 });
 
@@ -164,6 +146,14 @@ describe("formatDate", () => {
     const result = formatDate("2026-11-08");
 
     expect(result).toBe("domingo, 8 de noviembre de 2026");
+  });
+});
+
+describe("formatShortDate", () => {
+  it("Formats_a_year_month_day_date_as_day_month_year", () => {
+    const result = formatShortDate("2026-03-05");
+
+    expect(result).toBe("05/03/2026");
   });
 });
 

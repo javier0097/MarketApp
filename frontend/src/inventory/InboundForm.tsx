@@ -261,7 +261,7 @@ function InboundForm() {
         <TextInput
           ref={dateInputRef}
           type="date"
-          label="Fecha"
+          label="Fecha del movimiento"
           min={oneYearBefore(today())}
           max={today()}
           value={movementDate}
@@ -298,7 +298,7 @@ function InboundForm() {
                 {validQuantity !== null && costCents !== null && (
                   <Text size="sm">
                     Costo unitario:{" "}
-                    {formatMoney(unitCost(costCents, validQuantity))}
+                    {formatMoney(unitCost(costCents, validQuantity), 3)}
                   </Text>
                 )}
                 <Text size="sm">
@@ -311,13 +311,14 @@ function InboundForm() {
                           summary.lastInboundTotalCost,
                           summary.lastInboundQuantity,
                         ),
+                        3,
                       )}
                 </Text>
               </>
             )}
             {movementDate !== "" && movementDate !== today() && (
               <Text size="sm" fw={700}>
-                Fecha del ingreso: {formatDate(movementDate)} (no es hoy)
+                Fecha del movimiento: {formatDate(movementDate)} (no es hoy)
               </Text>
             )}
           </Stack>

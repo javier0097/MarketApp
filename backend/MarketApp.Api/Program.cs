@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 var appUrl = builder.Configuration["Urls"]!;
@@ -22,7 +23,9 @@ builder.Services.AddSerilog(configuration => configuration.ReadFrom.Configuratio
 
 // Validation error keys use the JSON property names (salePrice), not the C# ones (SalePrice)
 builder.Services.AddControllers(options =>
-    options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider()));
+        options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider()))
+    // Enums travel by name ("Inbound"), so the frontend does not depend on their numbers
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<MarketAppDbContext>(options => options
     .UseSqlite(builder.Configuration.GetConnectionString("MarketApp"))

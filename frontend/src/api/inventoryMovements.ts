@@ -43,3 +43,24 @@ export function getStockSummary(
     { signal },
   );
 }
+
+export type MovementType = "Inbound" | "Outbound";
+
+export type InventoryMovementResponse = {
+  id: number;
+  productId: number;
+  productCode: string;
+  productName: string;
+  type: MovementType;
+  quantity: number;
+  amount: number;
+  movementDate: string;
+  note: string | null;
+  createdAt: string;
+};
+
+export function getInventoryMovements(
+  signal?: AbortSignal,
+): Promise<InventoryMovementResponse[]> {
+  return request("/api/inventory-movements", { signal });
+}

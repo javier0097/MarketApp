@@ -7,5 +7,7 @@ public interface IInventoryMovementService
 {
     Task<InboundMovementResponse> CreateInboundAsync(CreateInboundMovementRequest request);
 
+    Task<List<InventoryMovementResponse>> GetAllAsync();
+
     Task<StockSummaryResponse> GetStockSummaryAsync(int productId);
 }

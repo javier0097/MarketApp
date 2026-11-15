@@ -1,4 +1,8 @@
+using MarketApp.Api.Data;
+using MarketApp.Api.Entities;
+using MarketApp.Api.Enums;
 using MarketApp.Api.Tests.Support;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -8,6 +12,7 @@ namespace MarketApp.Api.Tests.ApiTests;
 
 public class InventoryMovementsApiTests
 {
+    private const string MovementsUrl = "/api/inventory-movements";
     private const string InboundUrl = "/api/inventory-movements/inbound";
     private const string StockSummaryUrl = "/api/inventory-movements/stock-summary";
     private const string ProductsUrl = "/api/products";
@@ -299,6 +304,145 @@ public class InventoryMovementsApiTests
         Assert.Equal(404, body.Status);
     }
 
+    // ---------- GET /api/inventory-movements ----------
+
+    [Fact]
+    public async Task GetAll_returns_200_with_an_empty_list_when_there_are_no_movements()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        await CreateProductAsync(client);
+
+        using var response = await GetAllAsync(client);
+        var body = await ReadMovementsAsync(response);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Empty(body);
+    }
+
+    [Fact]
+    public async Task GetAll_returns_200_with_the_movements_from_the_latest_to_the_earliest()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        var productId = await CreateProductAsync(client);
+        var first = await CreateInboundAsync(client, productId);
+        var second = await CreateInboundAsync(client, productId);
+        var third = await CreateInboundAsync(client, productId);
+
+        using var response = await GetAllAsync(client);
+        var body = await ReadMovementsAsync(response);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(new[] { third.Id, second.Id, first.Id }, body.Select(m => m.Id));
+    }
+
+    [Fact]
+    public async Task GetAll_returns_the_fields_of_each_movement()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        var productId = await CreateProductAsync(client);
+        var created = await CreateInboundAsync(client, productId);
+
+        using var response = await GetAllAsync(client);
+        var movement = Assert.Single(await ReadMovementsAsync(response));
+
+        Assert.Equal(created.Id, movement.Id);
+        Assert.Equal(productId, movement.ProductId);
+        Assert.Equal("TMV00001", movement.ProductCode);
+        Assert.Equal("Arroz 1 kg", movement.ProductName);
+        Assert.Equal(Quantity, movement.Quantity);
+        Assert.Equal(TotalCost, movement.Amount);
+        Assert.Equal(Yesterday, movement.MovementDate);
+        Assert.Equal(Note, movement.Note);
+        Assert.Equal(created.CreatedAt, movement.CreatedAt);
+    }
+
+    // There is no endpoint to register an outbound yet, so the movement is saved
+    // straight into the API's database.
+    [Theory]
+    [InlineData(MovementType.Inbound, "Inbound")]
+    [InlineData(MovementType.Outbound, "Outbound")]
+    public async Task GetAll_sends_the_type_as_its_name(MovementType type, string expected)
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        var productId = await CreateProductAsync(client);
+        await SeedMovementAsync(factory, productId, type);
+
+        using var response = await GetAllAsync(client);
+        var movement = Assert.Single(await ReadMovementsAsync(response));
+
+        Assert.Equal(expected, movement.Type);
+    }
+
+    [Fact]
+    public async Task GetAll_sends_the_movement_date_as_year_month_day()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        var productId = await CreateProductAsync(client);
+        await CreateInboundAsync(client, productId);
+
+        using var response = await GetAllAsync(client);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+        Assert.Equal(MovementDate, body[0].GetProperty("movementDate").GetString());
+    }
+
+    [Fact]
+    public async Task GetAll_sends_the_creation_date_in_utc()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        var productId = await CreateProductAsync(client);
+        await CreateInboundAsync(client, productId);
+
+        using var response = await GetAllAsync(client);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+        var createdAt = body[0].GetProperty("createdAt").GetString();
+        Assert.NotNull(createdAt);
+        Assert.EndsWith("Z", createdAt);
+    }
+
+    private static Task<HttpResponseMessage> GetAllAsync(HttpClient client) =>
+        client.GetAsync(MovementsUrl, TestContext.Current.CancellationToken);
+
+    private static async Task<MovementBody[]> ReadMovementsAsync(HttpResponseMessage response)
+    {
+        var body = await response.Content.ReadFromJsonAsync<MovementBody[]>(TestContext.Current.CancellationToken);
+        Assert.NotNull(body);
+        return body;
+    }
+
+    private static async Task<InboundBody> CreateInboundAsync(HttpClient client, int productId)
+    {
+        using var response = await PostInboundAsync(client, productId);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<InboundBody>(TestContext.Current.CancellationToken);
+        Assert.NotNull(body);
+        return body;
+    }
+
+    private static async Task SeedMovementAsync(ApiFactory factory, int productId, MovementType type)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<MarketAppDbContext>();
+        context.Set<InventoryMovement>().Add(new InventoryMovement
+        {
+            ProductId = productId,
+            Type = type,
+            Quantity = 5,
+            Amount = 6250,
+            MovementDate = Yesterday,
+            CreatedAt = DateTime.UtcNow,
+            IsVoided = false,
+        });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
     private static string DaysFromToday(int days) =>
         DateOnly.FromDateTime(DateTime.Now).AddDays(days).ToString("yyyy-MM-dd");
 
@@ -359,4 +503,16 @@ public class InventoryMovementsApiTests
     private sealed record StockSummaryBody(int Stock, int? LastInboundQuantity, int? LastInboundTotalCost);
 
     private sealed record NotFoundBody(string Title, int Status);
+
+    private sealed record MovementBody(
+        int Id,
+        int ProductId,
+        string ProductCode,
+        string ProductName,
+        string Type,
+        int Quantity,
+        int Amount,
+        DateOnly MovementDate,
+        string? Note,
+        DateTime CreatedAt);
 }
