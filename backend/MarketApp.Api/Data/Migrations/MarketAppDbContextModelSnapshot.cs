@@ -50,6 +50,9 @@ namespace MarketApp.Api.Data.Migrations
                     b.Property<int>("Type")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("VoidReason")
                         .HasColumnType("TEXT");
 
@@ -110,11 +113,13 @@ namespace MarketApp.Api.Data.Migrations
 
             modelBuilder.Entity("MarketApp.Api.Entities.InventoryMovement", b =>
                 {
-                    b.HasOne("MarketApp.Api.Entities.Product", null)
+                    b.HasOne("MarketApp.Api.Entities.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Product");
                 });
 #pragma warning restore 612, 618
         }

@@ -35,6 +35,7 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
                 $"La fecha no puede ser anterior al {earliest.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}.");
         }
 
+        var now = DateTime.UtcNow;
         var movement = new InventoryMovement
         {
             ProductId = productId,
@@ -42,7 +43,8 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
             Quantity = request.Quantity!.Value,
             Amount = request.TotalCost!.Value,
             MovementDate = movementDate,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = now,
+            UpdatedAt = now,
             Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
         };
 

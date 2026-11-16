@@ -93,6 +93,18 @@ public class InventoryMovementServiceTests
     }
 
     [Fact]
+    public async Task Sets_the_update_date_equal_to_the_creation_date()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+
+        var response = await CreateInboundAsync(database, NewRequest(product.Id));
+
+        var movement = await FindMovementAsync(database, response.Id);
+        Assert.Equal(movement.CreatedAt, movement.UpdatedAt);
+    }
+
+    [Fact]
     public async Task Returns_the_creation_date_that_was_saved()
     {
         using var database = new TestDatabase();

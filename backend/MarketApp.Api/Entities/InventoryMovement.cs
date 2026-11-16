@@ -12,6 +12,7 @@ public class InventoryMovement
     public int Amount { get; set; }
     public DateOnly MovementDate { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
     public int? CreatedById { get; set; }
     public string? Note { get; set; }
     public bool IsVoided { get; set; }
