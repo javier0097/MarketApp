@@ -20,7 +20,7 @@ public class InventoryMovementsApiTests
     private const string ProductRequiredMessage =
         "Falta el producto. Búsquelo por nombre o código, o escanee su código de barras.";
     private const string QuantityRequiredMessage = "Ingrese la cantidad de unidades del lote.";
-    private const string QuantityRangeMessage = "La cantidad debe estar entre 1 y 9.999.";
+    private const string QuantityRangeMessage = "La cantidad debe estar entre 1 y 99.999.";
     private const string TotalCostRequiredMessage = "Ingrese el costo total del lote.";
     private const string TotalCostRangeMessage = "El costo total debe estar entre Bs 0,00 y Bs 99.999,99.";
     private const string MovementDateRequiredMessage = "Ingrese la fecha de ingreso.";
@@ -144,7 +144,7 @@ public class InventoryMovementsApiTests
 
     [Theory]
     [InlineData(1)]
-    [InlineData(9999)]
+    [InlineData(99999)]
     public async Task Create_accepts_a_quantity_at_the_limits_of_the_range(int quantity)
     {
         using var factory = new ApiFactory();
@@ -159,7 +159,7 @@ public class InventoryMovementsApiTests
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    [InlineData(10000)]
+    [InlineData(100000)]
     public async Task Create_returns_400_when_the_quantity_is_out_of_range(int quantity)
     {
         using var factory = new ApiFactory();

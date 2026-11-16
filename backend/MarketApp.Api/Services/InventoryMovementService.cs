@@ -21,19 +21,8 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
         }
 
         var movementDate = request.MovementDate!.Value;
-        var today = DateOnly.FromDateTime(DateTime.Now);
-        if (movementDate > today)
-        {
-            throw new FieldValidationException(nameof(CreateInboundMovementRequest.MovementDate), "La fecha no puede ser posterior a hoy.");
-        }
-
-        var earliest = today.AddYears(-1);
-        if (movementDate < earliest)
-        {
-            throw new FieldValidationException(
-                nameof(CreateInboundMovementRequest.MovementDate),
-                $"La fecha no puede ser anterior al {earliest.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}.");
-        }
+        ValidateNotAfterToday(movementDate);
+        ValidateNotOlderThanOneYear(movementDate);
 
         var now = DateTime.UtcNow;
         var movement = new InventoryMovement
@@ -53,6 +42,34 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
         logger.LogInformation(
             "Inbound movement {MovementId} created: product {ProductId} {Quantity} {TotalCost} {MovementDate} {Note}",
             movement.Id, movement.ProductId, movement.Quantity, movement.Amount, movement.MovementDate, movement.Note);
+
+        return new InboundMovementResponse(
+            movement.Id, movement.ProductId, movement.Quantity, movement.Amount, movement.MovementDate, movement.Note, movement.CreatedAt);
+    }
+
+    public async Task<InboundMovementResponse> UpdateInboundAsync(int id, UpdateInboundMovementRequest request)
+    {
+        var movement = await db.InventoryMovements.FirstOrDefaultAsync(m => m.Id == id && m.Type == MovementType.Inbound)
+            ?? throw new NotFoundException("El ingreso no existe.");
+
+        var movementDate = request.MovementDate!.Value;
+        ValidateNotAfterToday(movementDate);
+        // An old inbound must stay correctable without moving its date
+        if (movementDate != movement.MovementDate)
+        {
+            ValidateNotOlderThanOneYear(movementDate);
+        }
+
+        var (oldQuantity, oldAmount, oldMovementDate, oldNote) = (movement.Quantity, movement.Amount, movement.MovementDate, movement.Note);
+        movement.Quantity = request.Quantity!.Value;
+        movement.Amount = request.TotalCost!.Value;
+        movement.MovementDate = movementDate;
+        movement.Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+        movement.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        logger.LogInformation(
+            "Inbound movement {MovementId} updated: {OldQuantity} {OldTotalCost} {OldMovementDate} {OldNote} -> {Quantity} {TotalCost} {MovementDate} {Note}",
+            movement.Id, oldQuantity, oldAmount, oldMovementDate, oldNote, movement.Quantity, movement.Amount, movement.MovementDate, movement.Note);
 
         return new InboundMovementResponse(
             movement.Id, movement.ProductId, movement.Quantity, movement.Amount, movement.MovementDate, movement.Note, movement.CreatedAt);
@@ -84,5 +101,24 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
             .FirstOrDefaultAsync();
 
         return new StockSummaryResponse(stock, lastInbound?.Quantity, lastInbound?.Amount);
+    }
+
+    private static void ValidateNotAfterToday(DateOnly movementDate)
+    {
+        if (movementDate > DateOnly.FromDateTime(DateTime.Now))
+        {
+            throw new FieldValidationException(nameof(InventoryMovement.MovementDate), "La fecha no puede ser posterior a hoy.");
+        }
+    }
+
+    private static void ValidateNotOlderThanOneYear(DateOnly movementDate)
+    {
+        var earliest = DateOnly.FromDateTime(DateTime.Now).AddYears(-1);
+        if (movementDate < earliest)
+        {
+            throw new FieldValidationException(
+                nameof(InventoryMovement.MovementDate),
+                $"La fecha no puede ser anterior al {earliest.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}.");
+        }
     }
 }

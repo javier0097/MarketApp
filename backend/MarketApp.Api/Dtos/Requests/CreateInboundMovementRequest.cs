@@ -8,7 +8,7 @@ public record CreateInboundMovementRequest
     public int? ProductId { get; init; }
 
     [Required(ErrorMessage = "Ingrese la cantidad de unidades del lote.")]
-    [Range(1, 9999, ErrorMessage = "La cantidad debe estar entre 1 y 9.999.")]
+    [Range(1, 99999, ErrorMessage = "La cantidad debe estar entre 1 y 99.999.")]
     public int? Quantity { get; init; }
 
     [Required(ErrorMessage = "Ingrese el costo total del lote.")]

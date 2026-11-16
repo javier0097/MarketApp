@@ -22,6 +22,13 @@ public class InventoryMovementsController(IInventoryMovementService inventoryMov
         return StatusCode(StatusCodes.Status201Created, movement);
     }
 
+    [HttpPut("{id:int}/inbound")]
+    public async Task<IActionResult> UpdateInbound(int id, UpdateInboundMovementRequest request)
+    {
+        var movement = await inventoryMovementService.UpdateInboundAsync(id, request);
+        return Ok(movement);
+    }
+
     [HttpGet("stock-summary")]
     public async Task<IActionResult> GetStockSummary(int productId)
     {
