@@ -50,12 +50,18 @@ export type StockSummaryResponse = {
   lastInboundTotalCost: number | null;
 };
 
+// The excluded movement still counts toward the stock, but is never taken as the last inbound
 export function getStockSummary(
   productId: number,
+  excludedMovementId: number | null,
   signal?: AbortSignal,
 ): Promise<StockSummaryResponse> {
+  const excluded =
+    excludedMovementId === null
+      ? ""
+      : `&excludedMovementId=${excludedMovementId}`;
   return request(
-    `/api/inventory-movements/stock-summary?productId=${productId}`,
+    `/api/inventory-movements/stock-summary?productId=${productId}${excluded}`,
     { signal },
   );
 }

@@ -26,6 +26,7 @@ import { formatDate, oneYearBefore, today } from "../lib/dates.ts";
 import {
   formatQuantity,
   stockAfterInbound,
+  formatLastUnitCost,
   unitCost,
 } from "../lib/inventory.ts";
 import { formatMoney, fromCents, toCents } from "../lib/money.ts";
@@ -34,6 +35,7 @@ import {
   matchesSearchWords,
   toSearchWords,
 } from "../lib/search.ts";
+import InboundEditSummary from "./InboundEditSummary.tsx";
 import ProductPicker from "./ProductPicker.tsx";
 
 type FieldErrors = Record<string, string[]>;
@@ -77,7 +79,8 @@ function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
 
   // Derived on every render, so a code scanned before the products finished loading is recognized when they arrive
   const product = pickedProduct ?? findProductByCode(products, productText);
-  const productId = product?.id;
+  const productId = editing ? movement.productId : product?.id;
+  const excludedMovementId = movement?.id ?? null;
   // A summary that arrives for another product is never shown
   const summary =
     loadedSummary !== null && loadedSummary.productId === productId
@@ -117,7 +120,11 @@ function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
 
     async function loadSummary(id: number) {
       try {
-        const summary = await getStockSummary(id, controller.signal);
+        const summary = await getStockSummary(
+          id,
+          excludedMovementId,
+          controller.signal,
+        );
         setLoadedSummary({ productId: id, summary });
       } catch (error) {
         if (!controller.signal.aborted) {
@@ -128,7 +135,7 @@ function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
 
     loadSummary(productId);
     return () => controller.abort();
-  }, [productId]);
+  }, [productId, excludedMovementId]);
 
   function clearFieldError(field: string) {
     setErrors((current) => ({ ...current, [field]: [] }));
@@ -318,45 +325,45 @@ function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
           inputWrapperOrder={["label", "input", "description", "error"]}
           error={errors.note?.[0]}
         />
-        {product && (
-          <Stack gap="xs">
-            <Text fw={500}>Resumen</Text>
-            {summary === null ? (
-              <Text size="sm">Cargando el stock del producto…</Text>
-            ) : (
-              <>
-                <Text size="sm">
-                  {validQuantity === null
-                    ? `Stock actual: ${formatQuantity(summary.stock)}`
-                    : `Stock: ${formatQuantity(summary.stock)} → ${formatQuantity(stockAfterInbound(summary.stock, validQuantity))}`}
-                </Text>
-                {validQuantity !== null && costCents !== null && (
+        {editing ? (
+          <InboundEditSummary
+            movement={movement}
+            summary={summary}
+            quantity={validQuantity}
+            costCents={costCents}
+            movementDate={movementDate}
+          />
+        ) : (
+          product && (
+            <Stack gap="xs">
+              <Text fw={500}>Resumen</Text>
+              {summary === null ? (
+                <Text size="sm">Cargando el stock del producto…</Text>
+              ) : (
+                <>
                   <Text size="sm">
-                    Costo unitario:{" "}
-                    {formatMoney(unitCost(costCents, validQuantity), 3)}
+                    {validQuantity === null
+                      ? `Stock actual: ${formatQuantity(summary.stock)}`
+                      : `Stock: ${formatQuantity(summary.stock)} → ${formatQuantity(stockAfterInbound(summary.stock, validQuantity))}`}
                   </Text>
-                )}
-                <Text size="sm">
-                  Último costo unitario:{" "}
-                  {summary.lastInboundQuantity === null ||
-                  summary.lastInboundTotalCost === null
-                    ? "Sin ingresos anteriores"
-                    : formatMoney(
-                        unitCost(
-                          summary.lastInboundTotalCost,
-                          summary.lastInboundQuantity,
-                        ),
-                        3,
-                      )}
+                  {validQuantity !== null && costCents !== null && (
+                    <Text size="sm">
+                      Costo unitario:{" "}
+                      {formatMoney(unitCost(costCents, validQuantity), 3)}
+                    </Text>
+                  )}
+                  <Text size="sm">
+                    Último costo unitario: {formatLastUnitCost(summary)}
+                  </Text>
+                </>
+              )}
+              {movementDate !== "" && movementDate !== today() && (
+                <Text size="sm" fw={700}>
+                  Fecha del movimiento: {formatDate(movementDate)} (no es hoy)
                 </Text>
-              </>
-            )}
-            {movementDate !== "" && movementDate !== today() && (
-              <Text size="sm" fw={700}>
-                Fecha del movimiento: {formatDate(movementDate)} (no es hoy)
-              </Text>
-            )}
-          </Stack>
+              )}
+            </Stack>
+          )
         )}
         <Button type="submit" loading={saving}>
           {editing ? "Guardar cambios" : "Guardar ingreso"}
