@@ -82,6 +82,13 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
                 m.Id, m.ProductId, m.Product.Code, m.Product.Name, m.Type, m.Quantity, m.Amount, m.MovementDate, m.Note, m.CreatedAt))
             .ToListAsync();
 
+    public async Task<InventoryMovementResponse> GetByIdAsync(int id) =>
+        await db.InventoryMovements
+            .Where(m => m.Id == id)
+            .Select(m => new InventoryMovementResponse(
+                m.Id, m.ProductId, m.Product.Code, m.Product.Name, m.Type, m.Quantity, m.Amount, m.MovementDate, m.Note, m.CreatedAt))
+            .FirstOrDefaultAsync() ?? throw new NotFoundException("El movimiento no existe.");
+
     public async Task<StockSummaryResponse> GetStockSummaryAsync(int productId)
     {
         if (!await db.Products.AnyAsync(p => p.Id == productId))

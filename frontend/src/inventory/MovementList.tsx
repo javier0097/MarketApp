@@ -184,6 +184,7 @@ function MovementTable({
           <Table.Th ta="right">Monto total</Table.Th>
           <Table.Th ta="right">Costo unitario</Table.Th>
           <Table.Th>Nota</Table.Th>
+          <Table.Th />
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -210,6 +211,18 @@ function MovementTable({
             </Table.Td>
             <Table.Td style={{ overflowWrap: "anywhere" }}>
               {movement.note}
+            </Table.Td>
+            <Table.Td>
+              {movement.type === "Inbound" && (
+                <Button
+                  component="a"
+                  href={`/inventario/movimientos/${movement.id}/editar`}
+                  size="xs"
+                  variant="default"
+                >
+                  Editar
+                </Button>
+              )}
             </Table.Td>
           </Table.Tr>
         ))}

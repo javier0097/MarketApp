@@ -94,7 +94,10 @@ every screen.
 - A query becomes an extension method on `IQueryable<T>` in `Queries/` (one
   file per entity, e.g. `ProductQueries.cs`) when it is used in more than one
   place, or when it is so long that the service method no longer reads
-  clearly. Short queries stay inline in the service.
+  clearly. Short queries stay inline in the service. "Used in more than one
+  place" means a whole query or several chained steps (filters, ordering,
+  projection); a single repeated step, such as the projection to a response
+  DTO, stays inline.
 - Types carry a suffix that says what they are, set by their folder:
   `Controllers/` → `Controller`, `Services/` → `Service`,
   `Services/Interfaces/` → `I…Service`, `Helpers/` → `Helper`, `Queries/` →

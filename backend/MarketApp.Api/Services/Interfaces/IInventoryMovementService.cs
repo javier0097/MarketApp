@@ -11,5 +11,7 @@ public interface IInventoryMovementService
 
     Task<List<InventoryMovementResponse>> GetAllAsync();
 
+    Task<InventoryMovementResponse> GetByIdAsync(int id);
+
     Task<StockSummaryResponse> GetStockSummaryAsync(int productId);
 }

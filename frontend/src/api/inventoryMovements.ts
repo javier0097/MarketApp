@@ -28,6 +28,22 @@ export function createInboundMovement(
   });
 }
 
+export type UpdateInboundMovementRequest = Omit<
+  CreateInboundMovementRequest,
+  "productId"
+>;
+
+export function updateInboundMovement(
+  id: number,
+  movement: UpdateInboundMovementRequest,
+): Promise<InboundMovementResponse> {
+  return request(`/api/inventory-movements/${id}/inbound`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(movement),
+  });
+}
+
 export type StockSummaryResponse = {
   stock: number;
   lastInboundQuantity: number | null;
@@ -63,4 +79,11 @@ export function getInventoryMovements(
   signal?: AbortSignal,
 ): Promise<InventoryMovementResponse[]> {
   return request("/api/inventory-movements", { signal });
+}
+
+export function getInventoryMovement(
+  id: number,
+  signal?: AbortSignal,
+): Promise<InventoryMovementResponse> {
+  return request(`/api/inventory-movements/${id}`, { signal });
 }

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import {
   Alert,
   Button,
+  Input,
   NumberInput,
   Stack,
   Text,
@@ -15,7 +16,9 @@ import {
 import {
   createInboundMovement,
   getStockSummary,
+  updateInboundMovement,
   type InboundMovementResponse,
+  type InventoryMovementResponse,
   type StockSummaryResponse,
 } from "../api/inventoryMovements.ts";
 import { getProducts, type ProductResponse } from "../api/products.ts";
@@ -25,7 +28,7 @@ import {
   stockAfterInbound,
   unitCost,
 } from "../lib/inventory.ts";
-import { formatMoney, toCents } from "../lib/money.ts";
+import { formatMoney, fromCents, toCents } from "../lib/money.ts";
 import {
   findProductByCode,
   matchesSearchWords,
@@ -36,16 +39,24 @@ import ProductPicker from "./ProductPicker.tsx";
 type FieldErrors = Record<string, string[]>;
 
 const noteMaxLength = 500;
-function InboundForm() {
+
+function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
+  const editing = movement !== undefined;
   const [products, setProducts] = useState<ProductResponse[] | null>(null);
   const [productText, setProductText] = useState("");
   const [pickedProduct, setPickedProduct] = useState<ProductResponse | null>(
     null,
   );
-  const [quantity, setQuantity] = useState<number | string>("");
-  const [cost, setCost] = useState<number | string>("");
-  const [movementDate, setMovementDate] = useState(today);
-  const [note, setNote] = useState("");
+  const [quantity, setQuantity] = useState<number | string>(
+    movement?.quantity ?? "",
+  );
+  const [cost, setCost] = useState<number | string>(
+    movement ? fromCents(movement.amount).toFixed(2) : "",
+  );
+  const [movementDate, setMovementDate] = useState(
+    () => movement?.movementDate ?? today(),
+  );
+  const [note, setNote] = useState(movement?.note ?? "");
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
@@ -77,6 +88,10 @@ function InboundForm() {
   const costCents = cost === "" ? null : toCents(Number(cost));
 
   useEffect(() => {
+    if (editing) {
+      return;
+    }
+
     const controller = new AbortController();
 
     async function loadProducts() {
@@ -91,7 +106,7 @@ function InboundForm() {
 
     loadProducts();
     return () => controller.abort();
-  }, []);
+  }, [editing]);
 
   useEffect(() => {
     if (productId === undefined) {
@@ -149,14 +164,25 @@ function InboundForm() {
     setLastSaved(null);
     setSaving(true);
     try {
-      const movement = await createInboundMovement({
+      if (editing) {
+        await updateInboundMovement(movement.id, {
+          quantity: quantity === "" ? null : Number(quantity),
+          totalCost: costCents,
+          movementDate: movementDate === "" ? null : movementDate,
+          note,
+        });
+        window.location.assign("/inventario/movimientos");
+        return;
+      }
+
+      const created = await createInboundMovement({
         productId: product?.id ?? null,
         quantity: quantity === "" ? null : Number(quantity),
         totalCost: costCents,
         movementDate: movementDate === "" ? null : movementDate,
         note,
       });
-      setLastSaved({ productName: product!.name, movement });
+      setLastSaved({ productName: product!.name, movement: created });
       // Focus first: leaving a field makes Mantine's NumberInput emit its old value again,
       // which would undo the clearing below if it came after it
       productInputRef.current?.focus();
@@ -208,21 +234,30 @@ function InboundForm() {
             {formatDate(lastSaved.movement.movementDate)}
           </Alert>
         )}
-        <ProductPicker
-          products={products}
-          text={productText}
-          product={product}
-          onChange={(text, picked) => {
-            setProductText(text);
-            setPickedProduct(picked);
-            clearFieldError("productId");
-          }}
-          onPick={() => quantityInputRef.current?.focus()}
-          error={errors.productId?.[0]}
-          inputRef={productInputRef}
-        />
+        {editing ? (
+          <Input.Wrapper label="Producto">
+            <Text style={{ overflowWrap: "anywhere" }}>
+              {movement.productName} · {movement.productCode}
+            </Text>
+          </Input.Wrapper>
+        ) : (
+          <ProductPicker
+            products={products}
+            text={productText}
+            product={product}
+            onChange={(text, picked) => {
+              setProductText(text);
+              setPickedProduct(picked);
+              clearFieldError("productId");
+            }}
+            onPick={() => quantityInputRef.current?.focus()}
+            error={errors.productId?.[0]}
+            inputRef={productInputRef}
+          />
+        )}
         <NumberInput
           ref={quantityInputRef}
+          autoFocus={editing}
           label="Cantidad"
           allowDecimal={false}
           allowNegative={false}
@@ -324,8 +359,17 @@ function InboundForm() {
           </Stack>
         )}
         <Button type="submit" loading={saving}>
-          Guardar ingreso
+          {editing ? "Guardar cambios" : "Guardar ingreso"}
         </Button>
+        {editing && (
+          <Button
+            component="a"
+            href="/inventario/movimientos"
+            variant="default"
+          >
+            Cancelar
+          </Button>
+        )}
       </Stack>
     </form>
   );

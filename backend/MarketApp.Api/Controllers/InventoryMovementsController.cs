@@ -15,6 +15,13 @@ public class InventoryMovementsController(IInventoryMovementService inventoryMov
         return Ok(movements);
     }
 
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var movement = await inventoryMovementService.GetByIdAsync(id);
+        return Ok(movement);
+    }
+
     [HttpPost("inbound")]
     public async Task<IActionResult> CreateInbound(CreateInboundMovementRequest request)
     {
