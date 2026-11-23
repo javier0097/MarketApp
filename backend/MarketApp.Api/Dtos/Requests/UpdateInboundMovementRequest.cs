@@ -12,7 +12,7 @@ public record UpdateInboundMovementRequest
     [Range(0, 9999999, ErrorMessage = "El costo total debe estar entre Bs 0,00 y Bs 99.999,99.")]
     public int? TotalCost { get; init; }
 
-    [Required(ErrorMessage = "Ingrese la fecha de ingreso.")]
+    [Required(ErrorMessage = "Ingrese la fecha del movimiento.")]
     public DateOnly? MovementDate { get; init; }
 
     [MaxLength(500, ErrorMessage = "La nota no puede tener más de 500 caracteres.")]
