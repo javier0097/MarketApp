@@ -17,12 +17,16 @@ import {
   createInboundMovement,
   getStockSummary,
   updateInboundMovement,
-  type InboundMovementResponse,
   type InventoryMovementResponse,
   type StockSummaryResponse,
 } from "../api/inventoryMovements.ts";
 import { getProducts, type ProductResponse } from "../api/products.ts";
-import { formatDate, oneYearBefore, today } from "../lib/dates.ts";
+import {
+  formatDate,
+  formatShortDate,
+  oneYearBefore,
+  today,
+} from "../lib/dates.ts";
 import {
   formatQuantity,
   stockAfterInbound,
@@ -30,12 +34,14 @@ import {
   unitCost,
 } from "../lib/inventory.ts";
 import { formatMoney, fromCents, toCents } from "../lib/money.ts";
+import { rememberInSession, savedInboundKey } from "../lib/session.ts";
 import {
   findProductByCode,
   matchesSearchWords,
   toSearchWords,
 } from "../lib/search.ts";
 import InboundEditSummary from "./InboundEditSummary.tsx";
+import InboundSavedAlert, { type SavedInbound } from "./InboundSavedAlert.tsx";
 import ProductPicker from "./ProductPicker.tsx";
 
 type FieldErrors = Record<string, string[]>;
@@ -66,10 +72,7 @@ function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
     productId: number;
     summary: StockSummaryResponse;
   } | null>(null);
-  const [lastSaved, setLastSaved] = useState<{
-    productName: string;
-    movement: InboundMovementResponse;
-  } | null>(null);
+  const [lastSaved, setLastSaved] = useState<SavedInbound | null>(null);
 
   const productInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +83,6 @@ function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
   // Derived on every render, so a code scanned before the products finished loading is recognized when they arrive
   const product = pickedProduct ?? findProductByCode(products, productText);
   const productId = editing ? movement.productId : product?.id;
-  const excludedMovementId = movement?.id ?? null;
   // A summary that arrives for another product is never shown
   const summary =
     loadedSummary !== null && loadedSummary.productId === productId
@@ -120,11 +122,7 @@ function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
 
     async function loadSummary(id: number) {
       try {
-        const summary = await getStockSummary(
-          id,
-          excludedMovementId,
-          controller.signal,
-        );
+        const summary = await getStockSummary(id, controller.signal);
         setLoadedSummary({ productId: id, summary });
       } catch (error) {
         if (!controller.signal.aborted) {
@@ -135,7 +133,7 @@ function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
 
     loadSummary(productId);
     return () => controller.abort();
-  }, [productId, excludedMovementId]);
+  }, [productId]);
 
   function clearFieldError(field: string) {
     setErrors((current) => ({ ...current, [field]: [] }));
@@ -172,11 +170,15 @@ function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
     setSaving(true);
     try {
       if (editing) {
-        await updateInboundMovement(movement.id, {
+        const updated = await updateInboundMovement(movement.id, {
           quantity: quantity === "" ? null : Number(quantity),
           totalCost: costCents,
           movementDate: movementDate === "" ? null : movementDate,
           note,
+        });
+        rememberInSession<SavedInbound>(savedInboundKey, {
+          productName: movement.productName,
+          movement: updated,
         });
         window.location.assign("/inventario/movimientos");
         return;
@@ -229,18 +231,7 @@ function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
     <form onSubmit={handleSubmit} noValidate>
       <Stack gap="md">
         {generalError && <Alert color="red">{generalError}</Alert>}
-        {lastSaved && (
-          <Alert
-            color="green"
-            title="Ingreso guardado"
-            style={{ overflowWrap: "anywhere" }}
-          >
-            {lastSaved.productName} ·{" "}
-            {formatQuantity(lastSaved.movement.quantity)} u. ·{" "}
-            {formatMoney(lastSaved.movement.totalCost)} ·{" "}
-            {formatDate(lastSaved.movement.movementDate)}
-          </Alert>
-        )}
+        {lastSaved && <InboundSavedAlert saved={lastSaved} />}
         {editing ? (
           <Input.Wrapper label="Producto">
             <Text style={{ overflowWrap: "anywhere" }}>
@@ -264,7 +255,6 @@ function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
         )}
         <NumberInput
           ref={quantityInputRef}
-          autoFocus={editing}
           label="Cantidad"
           allowDecimal={false}
           allowNegative={false}
@@ -353,7 +343,10 @@ function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
                     </Text>
                   )}
                   <Text size="sm">
-                    Último costo unitario: {formatLastUnitCost(summary)}
+                    Costo unitario anterior
+                    {summary.lastInboundMovementDate !== null &&
+                      ` (${formatShortDate(summary.lastInboundMovementDate)})`}
+                    : {formatLastUnitCost(summary)}
                   </Text>
                 </>
               )}

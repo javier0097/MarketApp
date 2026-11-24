@@ -441,111 +441,6 @@ public class InventoryMovementServiceTests
         Assert.Equal(ProductNotFoundMessage, exception.Message);
     }
 
-    [Fact]
-    public async Task Skips_the_excluded_movement_when_it_is_the_last_inbound()
-    {
-        using var database = new TestDatabase();
-        var product = await SeedProductAsync(database);
-        var previous = NewInbound(product.Id, 10, 5000, October(1));
-        var last = NewInbound(product.Id, 20, 9000, October(15));
-        await SeedMovementsAsync(database, previous, last);
-
-        var summary = await GetStockSummaryAsync(database, product.Id, last.Id);
-
-        Assert.Equal(10, summary.LastInboundQuantity);
-        Assert.Equal(5000, summary.LastInboundTotalCost);
-    }
-
-    [Fact]
-    public async Task Keeps_the_last_inbound_when_the_excluded_movement_is_an_earlier_inbound()
-    {
-        using var database = new TestDatabase();
-        var product = await SeedProductAsync(database);
-        var earlier = NewInbound(product.Id, 10, 5000, October(1));
-        var last = NewInbound(product.Id, 20, 9000, October(15));
-        await SeedMovementsAsync(database, earlier, last);
-
-        var summary = await GetStockSummaryAsync(database, product.Id, earlier.Id);
-
-        Assert.Equal(20, summary.LastInboundQuantity);
-        Assert.Equal(9000, summary.LastInboundTotalCost);
-    }
-
-    [Fact]
-    public async Task Skips_the_excluded_movement_when_it_wins_a_tie_on_the_movement_date()
-    {
-        using var database = new TestDatabase();
-        var product = await SeedProductAsync(database);
-        var lowerId = NewInbound(product.Id, 10, 5000, October(15));
-        var higherId = NewInbound(product.Id, 20, 9000, October(15));
-        await SeedMovementsAsync(database, lowerId, higherId);
-
-        var summary = await GetStockSummaryAsync(database, product.Id, higherId.Id);
-
-        Assert.Equal(10, summary.LastInboundQuantity);
-        Assert.Equal(5000, summary.LastInboundTotalCost);
-    }
-
-    [Fact]
-    public async Task Skips_the_excluded_movement_and_a_voided_inbound_before_it()
-    {
-        using var database = new TestDatabase();
-        var product = await SeedProductAsync(database);
-        var valid = NewInbound(product.Id, 10, 5000, October(1));
-        var voided = NewInbound(product.Id, 30, 14000, October(8), isVoided: true);
-        var excluded = NewInbound(product.Id, 20, 9000, October(15));
-        await SeedMovementsAsync(database, valid, voided, excluded);
-
-        var summary = await GetStockSummaryAsync(database, product.Id, excluded.Id);
-
-        Assert.Equal(10, summary.LastInboundQuantity);
-        Assert.Equal(5000, summary.LastInboundTotalCost);
-    }
-
-    [Fact]
-    public async Task Ignores_an_excluded_id_that_does_not_exist()
-    {
-        using var database = new TestDatabase();
-        var product = await SeedProductAsync(database);
-        var last = NewInbound(product.Id, 20, 9000, October(15));
-        await SeedMovementsAsync(database, last);
-
-        var summary = await GetStockSummaryAsync(database, product.Id, last.Id + 100);
-
-        Assert.Equal(20, summary.LastInboundQuantity);
-        Assert.Equal(9000, summary.LastInboundTotalCost);
-    }
-
-    [Fact]
-    public async Task Ignores_an_excluded_outbound_when_finding_the_last_inbound()
-    {
-        using var database = new TestDatabase();
-        var product = await SeedProductAsync(database);
-        var inbound = NewInbound(product.Id, 20, 9000, October(1));
-        var outbound = NewOutbound(product.Id, 3, October(15));
-        await SeedMovementsAsync(database, inbound, outbound);
-
-        var summary = await GetStockSummaryAsync(database, product.Id, outbound.Id);
-
-        Assert.Equal(20, summary.LastInboundQuantity);
-        Assert.Equal(9000, summary.LastInboundTotalCost);
-    }
-
-    [Fact]
-    public async Task Keeps_the_excluded_movement_in_the_stock()
-    {
-        using var database = new TestDatabase();
-        var product = await SeedProductAsync(database);
-        var first = NewInbound(product.Id, 24, 18000, October(1));
-        var excluded = NewInbound(product.Id, 12, 9600, October(2));
-        var outbound = NewOutbound(product.Id, 5, October(3));
-        await SeedMovementsAsync(database, first, excluded, outbound);
-
-        var summary = await GetStockSummaryAsync(database, product.Id, excluded.Id);
-
-        Assert.Equal(31, summary.Stock);
-    }
-
     // ---------- GetAllAsync ----------
 
     [Fact]
@@ -1132,12 +1027,11 @@ public class InventoryMovementServiceTests
         }
     }
 
-    private static async Task<StockSummaryResponse> GetStockSummaryAsync(
-        TestDatabase database, int productId, int? excludedMovementId = null)
+    private static async Task<StockSummaryResponse> GetStockSummaryAsync(TestDatabase database, int productId)
     {
         using var context = database.CreateContext();
         var service = new InventoryMovementService(context, NullLogger<InventoryMovementService>.Instance);
-        return await service.GetStockSummaryAsync(productId, excludedMovementId);
+        return await service.GetStockSummaryAsync(productId);
     }
 
     private static CreateInboundMovementRequest NewRequest(

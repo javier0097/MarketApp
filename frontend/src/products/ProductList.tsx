@@ -14,7 +14,11 @@ import { getErrorMessage } from "../api/errors.ts";
 import { getProducts, type ProductResponse } from "../api/products.ts";
 import { formatDateTime } from "../lib/dates.ts";
 import { formatMoney } from "../lib/money.ts";
-import { clearSavedProduct, readSavedProduct } from "../lib/savedProduct.ts";
+import {
+  clearFromSession,
+  readFromSession,
+  savedProductKey,
+} from "../lib/session.ts";
 import { matchesSearchWords, toSearchWords } from "../lib/search.ts";
 import ProductSavedAlert from "./ProductSavedAlert.tsx";
 
@@ -22,11 +26,13 @@ function ProductList() {
   const [products, setProducts] = useState<ProductResponse[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [savedProduct] = useState(readSavedProduct);
+  const [savedProduct] = useState(() =>
+    readFromSession<ProductResponse>(savedProductKey),
+  );
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    clearSavedProduct();
+    clearFromSession(savedProductKey);
   }, []);
 
   useEffect(() => {

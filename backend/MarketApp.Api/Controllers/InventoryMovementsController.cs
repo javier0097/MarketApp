@@ -37,9 +37,9 @@ public class InventoryMovementsController(IInventoryMovementService inventoryMov
     }
 
     [HttpGet("stock-summary")]
-    public async Task<IActionResult> GetStockSummary(int productId, int? excludedMovementId)
+    public async Task<IActionResult> GetStockSummary(int productId)
     {
-        var summary = await inventoryMovementService.GetStockSummaryAsync(productId, excludedMovementId);
+        var summary = await inventoryMovementService.GetStockSummaryAsync(productId);
         return Ok(summary);
     }
 }

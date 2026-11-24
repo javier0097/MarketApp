@@ -5,7 +5,6 @@ import type {
 } from "../api/inventoryMovements.ts";
 import { formatDate } from "../lib/dates.ts";
 import {
-  formatLastUnitCost,
   formatQuantity,
   stockAfterInboundEdit,
   unitCost,
@@ -42,7 +41,7 @@ function InboundEditSummary({
   return (
     <Stack gap="xs">
       <Text fw={500}>Resumen</Text>
-      {(quantityChanged || unitCostChanged) && summary === null && (
+      {quantityChanged && summary === null && (
         <Text size="sm">Cargando el stock del producto…</Text>
       )}
       {quantityChanged && summary !== null && (
@@ -53,17 +52,12 @@ function InboundEditSummary({
           )}
         </Text>
       )}
-      {unitCostChanged && summary !== null && (
-        <>
-          <Text size="sm">
-            Costo unitario:{" "}
-            {formatMoney(unitCost(movement.amount, movement.quantity), 3)} →{" "}
-            {formatMoney(unitCost(costCents, quantity), 3)}
-          </Text>
-          <Text size="sm">
-            Último costo unitario: {formatLastUnitCost(summary)}
-          </Text>
-        </>
+      {unitCostChanged && (
+        <Text size="sm">
+          Costo unitario:{" "}
+          {formatMoney(unitCost(movement.amount, movement.quantity), 3)} →{" "}
+          {formatMoney(unitCost(costCents, quantity), 3)}
+        </Text>
       )}
       {dateChanged && (
         <Text size="sm">

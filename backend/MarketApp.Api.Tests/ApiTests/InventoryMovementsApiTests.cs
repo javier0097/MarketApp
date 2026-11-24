@@ -613,26 +613,6 @@ public class InventoryMovementsApiTests
         Assert.Equal(404, body.Status);
     }
 
-    [Fact]
-    public async Task StockSummary_skips_the_excluded_movement_when_it_is_the_last_inbound()
-    {
-        using var factory = new ApiFactory();
-        using var client = factory.CreateClient();
-        var productId = await CreateProductAsync(client);
-        using var first = await PostInboundAsync(client, productId, 24, 18000, DaysFromToday(-2));
-        using var second = await PostInboundAsync(client, productId, 12, 9600, DaysFromToday(-1));
-        var last = await second.Content.ReadFromJsonAsync<InboundBody>(TestContext.Current.CancellationToken);
-        Assert.NotNull(last);
-
-        using var response = await GetStockSummaryAsync(client, productId, last.Id);
-        var body = await response.Content.ReadFromJsonAsync<StockSummaryBody>(TestContext.Current.CancellationToken);
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.NotNull(body);
-        Assert.Equal(24, body.LastInboundQuantity);
-        Assert.Equal(18000, body.LastInboundTotalCost);
-    }
-
     // ---------- GET /api/inventory-movements ----------
 
     [Fact]
@@ -917,13 +897,8 @@ public class InventoryMovementsApiTests
         return await client.PutAsync(UpdateInboundUrl(id), content, TestContext.Current.CancellationToken);
     }
 
-    private static Task<HttpResponseMessage> GetStockSummaryAsync(
-        HttpClient client, int productId, int? excludedMovementId = null) =>
-        client.GetAsync(
-            excludedMovementId is null
-                ? $"{StockSummaryUrl}?productId={productId}"
-                : $"{StockSummaryUrl}?productId={productId}&excludedMovementId={excludedMovementId}",
-            TestContext.Current.CancellationToken);
+    private static Task<HttpResponseMessage> GetStockSummaryAsync(HttpClient client, int productId) =>
+        client.GetAsync($"{StockSummaryUrl}?productId={productId}", TestContext.Current.CancellationToken);
 
     private static async Task<HttpResponseMessage> PostRawJsonAsync(HttpClient client, string json)
     {
