@@ -20,6 +20,13 @@ public class InventoryMovementServiceTests
     private const int TotalCost = 18000;
     private const string Note = "Compra al proveedor";
 
+    private const string InboundNotFoundMessage = "El ingreso no existe.";
+    private const string MovementNotFoundMessage = "El movimiento no existe.";
+
+    private const int UpdatedQuantity = 30;
+    private const int UpdatedTotalCost = 22500;
+    private const string UpdatedNote = "Compra corregida";
+
     // ---------- CreateInboundAsync ----------
 
     [Fact]
@@ -90,6 +97,18 @@ public class InventoryMovementServiceTests
 
         var movement = await FindMovementAsync(database, response.Id);
         Assert.InRange(movement.CreatedAt, before, after);
+    }
+
+    [Fact]
+    public async Task Sets_the_update_date_equal_to_the_creation_date()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+
+        var response = await CreateInboundAsync(database, NewRequest(product.Id));
+
+        var movement = await FindMovementAsync(database, response.Id);
+        Assert.Equal(movement.CreatedAt, movement.UpdatedAt);
     }
 
     [Fact]
@@ -527,6 +546,428 @@ public class InventoryMovementServiceTests
         var response = Assert.Single(await GetAllAsync(database));
 
         Assert.Equal(DateTimeKind.Utc, response.CreatedAt.Kind);
+    }
+
+    // ---------- UpdateInboundAsync ----------
+
+    [Fact]
+    public async Task Saves_the_new_quantity_total_cost_date_and_note()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewInbound(product.Id, 24, 18000, Today().AddDays(-10));
+        await SeedMovementsAsync(database, movement);
+        var newDate = Today().AddDays(-5);
+
+        await UpdateInboundAsync(database, movement.Id, NewUpdateRequest(newDate));
+
+        var saved = await FindMovementAsync(database, movement.Id);
+        Assert.Equal(UpdatedQuantity, saved.Quantity);
+        Assert.Equal(UpdatedTotalCost, saved.Amount);
+        Assert.Equal(newDate, saved.MovementDate);
+        Assert.Equal(UpdatedNote, saved.Note);
+    }
+
+    [Fact]
+    public async Task Returns_the_updated_inbound()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewInbound(product.Id, 24, 18000, Today().AddDays(-10));
+        await SeedMovementsAsync(database, movement);
+        var newDate = Today().AddDays(-5);
+
+        var response = await UpdateInboundAsync(database, movement.Id, NewUpdateRequest(newDate));
+
+        Assert.Equal(movement.Id, response.Id);
+        Assert.Equal(product.Id, response.ProductId);
+        Assert.Equal(UpdatedQuantity, response.Quantity);
+        Assert.Equal(UpdatedTotalCost, response.TotalCost);
+        Assert.Equal(newDate, response.MovementDate);
+        Assert.Equal(UpdatedNote, response.Note);
+    }
+
+    [Fact]
+    public async Task Keeps_the_product_and_the_inbound_type_of_the_edited_movement()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewInbound(product.Id, 24, 18000, Today().AddDays(-10));
+        await SeedMovementsAsync(database, movement);
+
+        await UpdateInboundAsync(database, movement.Id, NewUpdateRequest(Today().AddDays(-5)));
+
+        var saved = await FindMovementAsync(database, movement.Id);
+        Assert.Equal(product.Id, saved.ProductId);
+        Assert.Equal(MovementType.Inbound, saved.Type);
+    }
+
+    [Fact]
+    public async Task Throws_not_found_when_the_inbound_does_not_exist()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var existing = NewInbound(product.Id, 24, 18000, Today().AddDays(-10));
+        await SeedMovementsAsync(database, existing);
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(
+            () => UpdateInboundAsync(database, existing.Id + 1, NewUpdateRequest(Today().AddDays(-5))));
+
+        Assert.Equal(InboundNotFoundMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Accepts_a_new_date_exactly_one_year_before_today()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewInbound(product.Id, 24, 18000, Today().AddDays(-10));
+        await SeedMovementsAsync(database, movement);
+        var oneYearAgo = Today().AddYears(-1);
+
+        await UpdateInboundAsync(database, movement.Id, NewUpdateRequest(oneYearAgo));
+
+        var saved = await FindMovementAsync(database, movement.Id);
+        Assert.Equal(oneYearAgo, saved.MovementDate);
+    }
+
+    [Fact]
+    public async Task Saves_the_changes_when_an_unchanged_date_is_more_than_one_year_before_today()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var twoYearsAgo = Today().AddYears(-2);
+        var movement = NewInbound(product.Id, 24, 18000, twoYearsAgo);
+        await SeedMovementsAsync(database, movement);
+
+        await UpdateInboundAsync(database, movement.Id, NewUpdateRequest(twoYearsAgo));
+
+        var saved = await FindMovementAsync(database, movement.Id);
+        Assert.Equal(twoYearsAgo, saved.MovementDate);
+        Assert.Equal(UpdatedQuantity, saved.Quantity);
+        Assert.Equal(UpdatedTotalCost, saved.Amount);
+    }
+
+    [Fact]
+    public async Task Rejects_a_new_date_more_than_one_year_before_today()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewInbound(product.Id, 24, 18000, Today().AddDays(-10));
+        await SeedMovementsAsync(database, movement);
+        var oneYearAgo = Today().AddYears(-1);
+
+        var exception = await Assert.ThrowsAsync<FieldValidationException>(
+            () => UpdateInboundAsync(database, movement.Id, NewUpdateRequest(oneYearAgo.AddDays(-1))));
+
+        Assert.Equal("MovementDate", exception.Field);
+        Assert.Equal($"La fecha no puede ser anterior al {oneYearAgo:dd'/'MM'/'yyyy}.", exception.Message);
+    }
+
+    // The stored date is two years old and the new one is a day later, but still
+    // older than one year. The date changes, so it is validated.
+    [Fact]
+    public async Task Rejects_a_changed_date_more_than_one_year_before_today_when_the_stored_date_was_already_older()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var twoYearsAgo = Today().AddYears(-2);
+        var movement = NewInbound(product.Id, 24, 18000, twoYearsAgo);
+        await SeedMovementsAsync(database, movement);
+        var oneYearAgo = Today().AddYears(-1);
+
+        var exception = await Assert.ThrowsAsync<FieldValidationException>(
+            () => UpdateInboundAsync(database, movement.Id, NewUpdateRequest(twoYearsAgo.AddDays(1))));
+
+        Assert.Equal("MovementDate", exception.Field);
+        Assert.Equal($"La fecha no puede ser anterior al {oneYearAgo:dd'/'MM'/'yyyy}.", exception.Message);
+    }
+
+    [Fact]
+    public async Task Accepts_today_as_the_new_date()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewInbound(product.Id, 24, 18000, Today().AddDays(-10));
+        await SeedMovementsAsync(database, movement);
+        var today = Today();
+
+        await UpdateInboundAsync(database, movement.Id, NewUpdateRequest(today));
+
+        var saved = await FindMovementAsync(database, movement.Id);
+        Assert.Equal(today, saved.MovementDate);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(365)]
+    public async Task Rejects_a_new_date_after_today(int daysFromToday)
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewInbound(product.Id, 24, 18000, Today().AddDays(-10));
+        await SeedMovementsAsync(database, movement);
+
+        var exception = await Assert.ThrowsAsync<FieldValidationException>(
+            () => UpdateInboundAsync(database, movement.Id, NewUpdateRequest(Today().AddDays(daysFromToday))));
+
+        Assert.Equal("MovementDate", exception.Field);
+        Assert.Equal(FutureDateMessage, exception.Message);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(-400)]
+    public async Task Does_not_save_the_changes_when_the_new_date_is_rejected(int daysFromToday)
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var originalDate = Today().AddDays(-10);
+        var movement = NewInbound(product.Id, 24, 18000, originalDate);
+        await SeedMovementsAsync(database, movement);
+        var request = NewUpdateRequest(Today().AddDays(daysFromToday));
+
+        await Assert.ThrowsAsync<FieldValidationException>(
+            () => UpdateInboundAsync(database, movement.Id, request));
+
+        var saved = await FindMovementAsync(database, movement.Id);
+        Assert.Equal(24, saved.Quantity);
+        Assert.Equal(18000, saved.Amount);
+        Assert.Equal(originalDate, saved.MovementDate);
+        Assert.Null(saved.Note);
+    }
+
+    [Fact]
+    public async Task Throws_not_found_when_the_id_belongs_to_an_outbound()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var outbound = NewOutbound(product.Id, 5, Today().AddDays(-10));
+        await SeedMovementsAsync(database, outbound);
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(
+            () => UpdateInboundAsync(database, outbound.Id, NewUpdateRequest(Today().AddDays(-5))));
+
+        Assert.Equal(InboundNotFoundMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Keeps_the_creation_date_of_the_edited_inbound()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewInbound(product.Id, 24, 18000, Today().AddDays(-10), createdAt: OctoberAt(1, 12));
+        await SeedMovementsAsync(database, movement);
+
+        await UpdateInboundAsync(database, movement.Id, NewUpdateRequest(Today().AddDays(-5)));
+
+        var saved = await FindMovementAsync(database, movement.Id);
+        Assert.Equal(OctoberAt(1, 12), saved.CreatedAt);
+    }
+
+    [Fact]
+    public async Task Returns_the_creation_date_of_the_edited_inbound_in_utc()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewInbound(product.Id, 24, 18000, Today().AddDays(-10));
+        await SeedMovementsAsync(database, movement);
+
+        var response = await UpdateInboundAsync(database, movement.Id, NewUpdateRequest(Today().AddDays(-5)));
+
+        Assert.Equal(DateTimeKind.Utc, response.CreatedAt.Kind);
+    }
+
+    [Fact]
+    public async Task Sets_the_update_date_of_the_edited_inbound_to_the_current_utc_time()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewInbound(product.Id, 24, 18000, Today().AddDays(-10));
+        await SeedMovementsAsync(database, movement);
+
+        var before = DateTime.UtcNow;
+        await UpdateInboundAsync(database, movement.Id, NewUpdateRequest(Today().AddDays(-5)));
+        var after = DateTime.UtcNow;
+
+        var saved = await FindMovementAsync(database, movement.Id);
+        Assert.InRange(saved.UpdatedAt, before, after);
+    }
+
+    [Fact]
+    public async Task Saves_the_edited_note_without_outer_spaces()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewInbound(product.Id, 24, 18000, Today().AddDays(-10));
+        await SeedMovementsAsync(database, movement);
+
+        await UpdateInboundAsync(
+            database, movement.Id, NewUpdateRequest(Today().AddDays(-5), note: "  Compra corregida  "));
+
+        var saved = await FindMovementAsync(database, movement.Id);
+        Assert.Equal("Compra corregida", saved.Note);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Removes_the_note_when_the_edited_note_is_missing_or_blank(string? note)
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewInbound(product.Id, 24, 18000, Today().AddDays(-10));
+        movement.Note = Note;
+        await SeedMovementsAsync(database, movement);
+
+        await UpdateInboundAsync(database, movement.Id, NewUpdateRequest(Today().AddDays(-5), note: note));
+
+        var saved = await FindMovementAsync(database, movement.Id);
+        Assert.Null(saved.Note);
+    }
+
+    // ---------- GetByIdAsync ----------
+
+    [Fact]
+    public async Task Returns_every_field_of_the_movement_with_the_given_id()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewOutbound(product.Id, 3, October(8));
+        movement.Note = "Venta al contado";
+        movement.CreatedAt = OctoberAt(9, 15);
+        await SeedMovementsAsync(database, movement);
+
+        var response = await GetByIdAsync(database, movement.Id);
+
+        Assert.Equal(movement.Id, response.Id);
+        Assert.Equal(product.Id, response.ProductId);
+        Assert.Equal("TMV00001", response.ProductCode);
+        Assert.Equal("Producto TMV00001", response.ProductName);
+        Assert.Equal(MovementType.Outbound, response.Type);
+        Assert.Equal(3, response.Quantity);
+        Assert.Equal(3750, response.Amount);
+        Assert.Equal(October(8), response.MovementDate);
+        Assert.Equal("Venta al contado", response.Note);
+        Assert.Equal(OctoberAt(9, 15), response.CreatedAt);
+    }
+
+    [Fact]
+    public async Task Returns_an_inbound_movement()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var inbound = NewInbound(product.Id, 24, 18000, October(1));
+        await SeedMovementsAsync(database, inbound);
+
+        var response = await GetByIdAsync(database, inbound.Id);
+
+        Assert.Equal(inbound.Id, response.Id);
+        Assert.Equal(MovementType.Inbound, response.Type);
+        Assert.Equal(24, response.Quantity);
+        Assert.Equal(18000, response.Amount);
+    }
+
+    [Fact]
+    public async Task Returns_the_movement_with_the_given_id_among_others()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var other = await SeedProductAsync(database, "TMV00002");
+        var first = NewInbound(product.Id, 10, 5000, October(1));
+        var wanted = NewOutbound(other.Id, 7, October(2));
+        var last = NewInbound(product.Id, 30, 14000, October(3));
+        await SeedMovementsAsync(database, first, wanted, last);
+
+        var response = await GetByIdAsync(database, wanted.Id);
+
+        Assert.Equal(wanted.Id, response.Id);
+        Assert.Equal(other.Id, response.ProductId);
+        Assert.Equal(7, response.Quantity);
+    }
+
+    [Theory]
+    [InlineData(MovementType.Inbound)]
+    [InlineData(MovementType.Outbound)]
+    public async Task Returns_a_voided_movement(MovementType type)
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = type == MovementType.Inbound
+            ? NewInbound(product.Id, 24, 18000, October(1), isVoided: true)
+            : NewOutbound(product.Id, 5, October(1), isVoided: true);
+        await SeedMovementsAsync(database, movement);
+
+        var response = await GetByIdAsync(database, movement.Id);
+
+        Assert.Equal(movement.Id, response.Id);
+        Assert.Equal(type, response.Type);
+    }
+
+    [Fact]
+    public async Task Returns_a_movement_of_an_inactive_product()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database, isActive: false);
+        var movement = NewInbound(product.Id, 24, 18000, October(1));
+        await SeedMovementsAsync(database, movement);
+
+        var response = await GetByIdAsync(database, movement.Id);
+
+        Assert.Equal(movement.Id, response.Id);
+        Assert.Equal(product.Id, response.ProductId);
+    }
+
+    [Fact]
+    public async Task Returns_the_creation_time_of_the_movement_in_utc()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var movement = NewInbound(product.Id, 24, 18000, October(1));
+        await SeedMovementsAsync(database, movement);
+
+        var response = await GetByIdAsync(database, movement.Id);
+
+        Assert.Equal(DateTimeKind.Utc, response.CreatedAt.Kind);
+    }
+
+    [Fact]
+    public async Task Throws_not_found_when_the_movement_does_not_exist()
+    {
+        using var database = new TestDatabase();
+        var product = await SeedProductAsync(database);
+        var existing = NewInbound(product.Id, 24, 18000, October(1));
+        await SeedMovementsAsync(database, existing);
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(
+            () => GetByIdAsync(database, existing.Id + 1));
+
+        Assert.Equal(MovementNotFoundMessage, exception.Message);
+    }
+
+    private static async Task<InventoryMovementResponse> GetByIdAsync(TestDatabase database, int id)
+    {
+        using var context = database.CreateContext();
+        var service = new InventoryMovementService(context, NullLogger<InventoryMovementService>.Instance);
+        return await service.GetByIdAsync(id);
+    }
+
+    private static UpdateInboundMovementRequest NewUpdateRequest(DateOnly movementDate, string? note = UpdatedNote) =>
+        new()
+        {
+            Quantity = UpdatedQuantity,
+            TotalCost = UpdatedTotalCost,
+            MovementDate = movementDate,
+            Note = note,
+        };
+
+    private static async Task<InboundMovementResponse> UpdateInboundAsync(
+        TestDatabase database, int id, UpdateInboundMovementRequest request)
+    {
+        using var context = database.CreateContext();
+        var service = new InventoryMovementService(context, NullLogger<InventoryMovementService>.Instance);
+        return await service.UpdateInboundAsync(id, request);
     }
 
     private static DateTime OctoberAt(int day, int hour) => new(2026, 10, day, hour, 0, 0, DateTimeKind.Utc);

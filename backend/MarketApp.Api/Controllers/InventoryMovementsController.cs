@@ -15,11 +15,25 @@ public class InventoryMovementsController(IInventoryMovementService inventoryMov
         return Ok(movements);
     }
 
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var movement = await inventoryMovementService.GetByIdAsync(id);
+        return Ok(movement);
+    }
+
     [HttpPost("inbound")]
     public async Task<IActionResult> CreateInbound(CreateInboundMovementRequest request)
     {
         var movement = await inventoryMovementService.CreateInboundAsync(request);
         return StatusCode(StatusCodes.Status201Created, movement);
+    }
+
+    [HttpPut("{id:int}/inbound")]
+    public async Task<IActionResult> UpdateInbound(int id, UpdateInboundMovementRequest request)
+    {
+        var movement = await inventoryMovementService.UpdateInboundAsync(id, request);
+        return Ok(movement);
     }
 
     [HttpGet("stock-summary")]

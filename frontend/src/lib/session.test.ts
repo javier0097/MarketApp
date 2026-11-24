@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProductResponse } from "../api/products.ts";
 import {
-  clearSavedProduct,
-  readSavedProduct,
-  rememberSavedProduct,
-} from "./savedProduct.ts";
+  clearFromSession,
+  readFromSession,
+  rememberInSession,
+  savedProductKey,
+} from "./session.ts";
 
 const STORAGE_KEY = "savedProduct";
 
@@ -58,9 +59,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("rememberSavedProduct", () => {
+describe("rememberInSession", () => {
   it("stores the complete product under the savedProduct key", () => {
-    rememberSavedProduct(rice);
+    rememberInSession(savedProductKey, rice);
 
     const stored = storage.getItem(STORAGE_KEY);
 
@@ -68,18 +69,18 @@ describe("rememberSavedProduct", () => {
   });
 
   it("replaces the product that was already stored", () => {
-    rememberSavedProduct(rice);
+    rememberInSession(savedProductKey, rice);
 
-    rememberSavedProduct(sugar);
+    rememberInSession(savedProductKey, sugar);
 
     const stored = storage.getItem(STORAGE_KEY);
     expect(JSON.parse(stored ?? "null")).toEqual(sugar);
   });
 });
 
-describe("readSavedProduct", () => {
+describe("readFromSession", () => {
   it("returns null when no product is stored", () => {
-    const product = readSavedProduct();
+    const product = readFromSession<ProductResponse>(savedProductKey);
 
     expect(product).toBeNull();
   });
@@ -87,7 +88,7 @@ describe("readSavedProduct", () => {
   it("returns null when the storage only holds other keys", () => {
     storage.setItem("otherKey", JSON.stringify(rice));
 
-    const product = readSavedProduct();
+    const product = readFromSession<ProductResponse>(savedProductKey);
 
     expect(product).toBeNull();
   });
@@ -95,17 +96,17 @@ describe("readSavedProduct", () => {
   it("returns the product stored under the savedProduct key", () => {
     storage.setItem(STORAGE_KEY, JSON.stringify(rice));
 
-    const product = readSavedProduct();
+    const product = readFromSession<ProductResponse>(savedProductKey);
 
     expect(product).toEqual(rice);
   });
 });
 
-describe("clearSavedProduct", () => {
+describe("clearFromSession", () => {
   it("removes the product stored under the savedProduct key", () => {
     storage.setItem(STORAGE_KEY, JSON.stringify(rice));
 
-    clearSavedProduct();
+    clearFromSession(savedProductKey);
 
     expect(storage.getItem(STORAGE_KEY)).toBeNull();
   });
@@ -114,32 +115,32 @@ describe("clearSavedProduct", () => {
     storage.setItem(STORAGE_KEY, JSON.stringify(rice));
     storage.setItem("otherKey", "otherValue");
 
-    clearSavedProduct();
+    clearFromSession(savedProductKey);
 
     expect(storage.getItem("otherKey")).toBe("otherValue");
   });
 
   it("does not fail when no product is stored", () => {
-    expect(() => clearSavedProduct()).not.toThrow();
+    expect(() => clearFromSession(savedProductKey)).not.toThrow();
   });
 });
 
-describe("saved product functions together", () => {
+describe("session functions together", () => {
   it("reads back the last product remembered", () => {
-    rememberSavedProduct(rice);
-    rememberSavedProduct(sugar);
+    rememberInSession(savedProductKey, rice);
+    rememberInSession(savedProductKey, sugar);
 
-    const product = readSavedProduct();
+    const product = readFromSession<ProductResponse>(savedProductKey);
 
     expect(product).toEqual(sugar);
   });
 
   it("reads null after the remembered product is cleared", () => {
-    rememberSavedProduct(rice);
+    rememberInSession(savedProductKey, rice);
 
-    clearSavedProduct();
+    clearFromSession(savedProductKey);
 
-    expect(readSavedProduct()).toBeNull();
+    expect(readFromSession<ProductResponse>(savedProductKey)).toBeNull();
   });
 
   it.each([
@@ -157,8 +158,8 @@ describe("saved product functions together", () => {
   ])("reads back the product unchanged with $label", ({ change }) => {
     const saved: ProductResponse = { ...rice, ...change };
 
-    rememberSavedProduct(saved);
+    rememberInSession(savedProductKey, saved);
 
-    expect(readSavedProduct()).toEqual(saved);
+    expect(readFromSession<ProductResponse>(savedProductKey)).toEqual(saved);
   });
 });

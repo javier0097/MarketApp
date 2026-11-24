@@ -21,20 +21,10 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
         }
 
         var movementDate = request.MovementDate!.Value;
-        var today = DateOnly.FromDateTime(DateTime.Now);
-        if (movementDate > today)
-        {
-            throw new FieldValidationException(nameof(CreateInboundMovementRequest.MovementDate), "La fecha no puede ser posterior a hoy.");
-        }
+        ValidateNotAfterToday(movementDate);
+        ValidateNotOlderThanOneYear(movementDate);
 
-        var earliest = today.AddYears(-1);
-        if (movementDate < earliest)
-        {
-            throw new FieldValidationException(
-                nameof(CreateInboundMovementRequest.MovementDate),
-                $"La fecha no puede ser anterior al {earliest.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}.");
-        }
-
+        var now = DateTime.UtcNow;
         var movement = new InventoryMovement
         {
             ProductId = productId,
@@ -42,7 +32,8 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
             Quantity = request.Quantity!.Value,
             Amount = request.TotalCost!.Value,
             MovementDate = movementDate,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = now,
+            UpdatedAt = now,
             Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
         };
 
@@ -56,12 +47,47 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
             movement.Id, movement.ProductId, movement.Quantity, movement.Amount, movement.MovementDate, movement.Note, movement.CreatedAt);
     }
 
+    public async Task<InboundMovementResponse> UpdateInboundAsync(int id, UpdateInboundMovementRequest request)
+    {
+        var movement = await db.InventoryMovements.FirstOrDefaultAsync(m => m.Id == id && m.Type == MovementType.Inbound)
+            ?? throw new NotFoundException("El ingreso no existe.");
+
+        var movementDate = request.MovementDate!.Value;
+        ValidateNotAfterToday(movementDate);
+        // An old inbound must stay correctable without moving its date
+        if (movementDate != movement.MovementDate)
+        {
+            ValidateNotOlderThanOneYear(movementDate);
+        }
+
+        var (oldQuantity, oldAmount, oldMovementDate, oldNote) = (movement.Quantity, movement.Amount, movement.MovementDate, movement.Note);
+        movement.Quantity = request.Quantity!.Value;
+        movement.Amount = request.TotalCost!.Value;
+        movement.MovementDate = movementDate;
+        movement.Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+        movement.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        logger.LogInformation(
+            "Inbound movement {MovementId} updated: {OldQuantity} {OldTotalCost} {OldMovementDate} {OldNote} -> {Quantity} {TotalCost} {MovementDate} {Note}",
+            movement.Id, oldQuantity, oldAmount, oldMovementDate, oldNote, movement.Quantity, movement.Amount, movement.MovementDate, movement.Note);
+
+        return new InboundMovementResponse(
+            movement.Id, movement.ProductId, movement.Quantity, movement.Amount, movement.MovementDate, movement.Note, movement.CreatedAt);
+    }
+
     public Task<List<InventoryMovementResponse>> GetAllAsync() =>
         db.InventoryMovements
             .OrderByDescending(m => m.CreatedAt)
             .Select(m => new InventoryMovementResponse(
                 m.Id, m.ProductId, m.Product.Code, m.Product.Name, m.Type, m.Quantity, m.Amount, m.MovementDate, m.Note, m.CreatedAt))
             .ToListAsync();
+
+    public async Task<InventoryMovementResponse> GetByIdAsync(int id) =>
+        await db.InventoryMovements
+            .Where(m => m.Id == id)
+            .Select(m => new InventoryMovementResponse(
+                m.Id, m.ProductId, m.Product.Code, m.Product.Name, m.Type, m.Quantity, m.Amount, m.MovementDate, m.Note, m.CreatedAt))
+            .FirstOrDefaultAsync() ?? throw new NotFoundException("El movimiento no existe.");
 
     public async Task<StockSummaryResponse> GetStockSummaryAsync(int productId)
     {
@@ -78,9 +104,28 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
             .Where(m => m.Type == MovementType.Inbound)
             .OrderByDescending(m => m.MovementDate)
             .ThenByDescending(m => m.Id)
-            .Select(m => new { m.Quantity, m.Amount })
+            .Select(m => new { m.Quantity, m.Amount, m.MovementDate })
             .FirstOrDefaultAsync();
 
-        return new StockSummaryResponse(stock, lastInbound?.Quantity, lastInbound?.Amount);
+        return new StockSummaryResponse(stock, lastInbound?.Quantity, lastInbound?.Amount, lastInbound?.MovementDate);
+    }
+
+    private static void ValidateNotAfterToday(DateOnly movementDate)
+    {
+        if (movementDate > DateOnly.FromDateTime(DateTime.Now))
+        {
+            throw new FieldValidationException(nameof(InventoryMovement.MovementDate), "La fecha no puede ser posterior a hoy.");
+        }
+    }
+
+    private static void ValidateNotOlderThanOneYear(DateOnly movementDate)
+    {
+        var earliest = DateOnly.FromDateTime(DateTime.Now).AddYears(-1);
+        if (movementDate < earliest)
+        {
+            throw new FieldValidationException(
+                nameof(InventoryMovement.MovementDate),
+                $"La fecha no puede ser anterior al {earliest.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)}.");
+        }
     }
 }

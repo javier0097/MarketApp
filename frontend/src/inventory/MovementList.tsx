@@ -25,7 +25,13 @@ import {
 } from "../lib/dates.ts";
 import { formatQuantity, unitCost } from "../lib/inventory.ts";
 import { formatMoney } from "../lib/money.ts";
+import {
+  clearFromSession,
+  readFromSession,
+  savedInboundKey,
+} from "../lib/session.ts";
 import { matchesSearchWords, toSearchWords } from "../lib/search.ts";
+import InboundSavedAlert, { type SavedInbound } from "./InboundSavedAlert.tsx";
 
 const typeLabels: Record<MovementType, string> = {
   Inbound: "Ingreso",
@@ -40,7 +46,14 @@ function MovementList() {
   const [dateText, setDateText] = useState(today);
   const [selectedDate, setSelectedDate] = useState(today);
   const [search, setSearch] = useState("");
+  const [savedInbound] = useState(() =>
+    readFromSession<SavedInbound>(savedInboundKey),
+  );
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    clearFromSession(savedInboundKey);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -90,6 +103,7 @@ function MovementList() {
 
   return (
     <Stack gap="lg">
+      {savedInbound && <InboundSavedAlert saved={savedInbound} />}
       <Group align="flex-start">
         <TextInput
           ref={searchInputRef}
@@ -184,6 +198,7 @@ function MovementTable({
           <Table.Th ta="right">Monto total</Table.Th>
           <Table.Th ta="right">Costo unitario</Table.Th>
           <Table.Th>Nota</Table.Th>
+          <Table.Th />
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -210,6 +225,18 @@ function MovementTable({
             </Table.Td>
             <Table.Td style={{ overflowWrap: "anywhere" }}>
               {movement.note}
+            </Table.Td>
+            <Table.Td>
+              {movement.type === "Inbound" && (
+                <Button
+                  component="a"
+                  href={`/inventario/movimientos/${movement.id}/editar`}
+                  size="xs"
+                  variant="default"
+                >
+                  Editar
+                </Button>
+              )}
             </Table.Td>
           </Table.Tr>
         ))}

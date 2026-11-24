@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import {
   Alert,
   Button,
+  Input,
   NumberInput,
   Stack,
   Text,
@@ -15,37 +16,55 @@ import {
 import {
   createInboundMovement,
   getStockSummary,
-  type InboundMovementResponse,
+  updateInboundMovement,
+  type InventoryMovementResponse,
   type StockSummaryResponse,
 } from "../api/inventoryMovements.ts";
 import { getProducts, type ProductResponse } from "../api/products.ts";
-import { formatDate, oneYearBefore, today } from "../lib/dates.ts";
+import {
+  formatDate,
+  formatShortDate,
+  oneYearBefore,
+  today,
+} from "../lib/dates.ts";
 import {
   formatQuantity,
   stockAfterInbound,
+  formatLastUnitCost,
   unitCost,
 } from "../lib/inventory.ts";
-import { formatMoney, toCents } from "../lib/money.ts";
+import { formatMoney, fromCents, toCents } from "../lib/money.ts";
+import { rememberInSession, savedInboundKey } from "../lib/session.ts";
 import {
   findProductByCode,
   matchesSearchWords,
   toSearchWords,
 } from "../lib/search.ts";
+import InboundEditSummary from "./InboundEditSummary.tsx";
+import InboundSavedAlert, { type SavedInbound } from "./InboundSavedAlert.tsx";
 import ProductPicker from "./ProductPicker.tsx";
 
 type FieldErrors = Record<string, string[]>;
 
 const noteMaxLength = 500;
-function InboundForm() {
+
+function InboundForm({ movement }: { movement?: InventoryMovementResponse }) {
+  const editing = movement !== undefined;
   const [products, setProducts] = useState<ProductResponse[] | null>(null);
   const [productText, setProductText] = useState("");
   const [pickedProduct, setPickedProduct] = useState<ProductResponse | null>(
     null,
   );
-  const [quantity, setQuantity] = useState<number | string>("");
-  const [cost, setCost] = useState<number | string>("");
-  const [movementDate, setMovementDate] = useState(today);
-  const [note, setNote] = useState("");
+  const [quantity, setQuantity] = useState<number | string>(
+    movement?.quantity ?? "",
+  );
+  const [cost, setCost] = useState<number | string>(
+    movement ? fromCents(movement.amount).toFixed(2) : "",
+  );
+  const [movementDate, setMovementDate] = useState(
+    () => movement?.movementDate ?? today(),
+  );
+  const [note, setNote] = useState(movement?.note ?? "");
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
@@ -53,10 +72,7 @@ function InboundForm() {
     productId: number;
     summary: StockSummaryResponse;
   } | null>(null);
-  const [lastSaved, setLastSaved] = useState<{
-    productName: string;
-    movement: InboundMovementResponse;
-  } | null>(null);
+  const [lastSaved, setLastSaved] = useState<SavedInbound | null>(null);
 
   const productInputRef = useRef<HTMLInputElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
@@ -66,7 +82,7 @@ function InboundForm() {
 
   // Derived on every render, so a code scanned before the products finished loading is recognized when they arrive
   const product = pickedProduct ?? findProductByCode(products, productText);
-  const productId = product?.id;
+  const productId = editing ? movement.productId : product?.id;
   // A summary that arrives for another product is never shown
   const summary =
     loadedSummary !== null && loadedSummary.productId === productId
@@ -77,6 +93,10 @@ function InboundForm() {
   const costCents = cost === "" ? null : toCents(Number(cost));
 
   useEffect(() => {
+    if (editing) {
+      return;
+    }
+
     const controller = new AbortController();
 
     async function loadProducts() {
@@ -91,7 +111,7 @@ function InboundForm() {
 
     loadProducts();
     return () => controller.abort();
-  }, []);
+  }, [editing]);
 
   useEffect(() => {
     if (productId === undefined) {
@@ -149,14 +169,29 @@ function InboundForm() {
     setLastSaved(null);
     setSaving(true);
     try {
-      const movement = await createInboundMovement({
+      if (editing) {
+        const updated = await updateInboundMovement(movement.id, {
+          quantity: quantity === "" ? null : Number(quantity),
+          totalCost: costCents,
+          movementDate: movementDate === "" ? null : movementDate,
+          note,
+        });
+        rememberInSession<SavedInbound>(savedInboundKey, {
+          productName: movement.productName,
+          movement: updated,
+        });
+        window.location.assign("/inventario/movimientos");
+        return;
+      }
+
+      const created = await createInboundMovement({
         productId: product?.id ?? null,
         quantity: quantity === "" ? null : Number(quantity),
         totalCost: costCents,
         movementDate: movementDate === "" ? null : movementDate,
         note,
       });
-      setLastSaved({ productName: product!.name, movement });
+      setLastSaved({ productName: product!.name, movement: created });
       // Focus first: leaving a field makes Mantine's NumberInput emit its old value again,
       // which would undo the clearing below if it came after it
       productInputRef.current?.focus();
@@ -196,31 +231,28 @@ function InboundForm() {
     <form onSubmit={handleSubmit} noValidate>
       <Stack gap="md">
         {generalError && <Alert color="red">{generalError}</Alert>}
-        {lastSaved && (
-          <Alert
-            color="green"
-            title="Ingreso guardado"
-            style={{ overflowWrap: "anywhere" }}
-          >
-            {lastSaved.productName} ·{" "}
-            {formatQuantity(lastSaved.movement.quantity)} u. ·{" "}
-            {formatMoney(lastSaved.movement.totalCost)} ·{" "}
-            {formatDate(lastSaved.movement.movementDate)}
-          </Alert>
+        {lastSaved && <InboundSavedAlert saved={lastSaved} />}
+        {editing ? (
+          <Input.Wrapper label="Producto">
+            <Text style={{ overflowWrap: "anywhere" }}>
+              {movement.productName} · {movement.productCode}
+            </Text>
+          </Input.Wrapper>
+        ) : (
+          <ProductPicker
+            products={products}
+            text={productText}
+            product={product}
+            onChange={(text, picked) => {
+              setProductText(text);
+              setPickedProduct(picked);
+              clearFieldError("productId");
+            }}
+            onPick={() => quantityInputRef.current?.focus()}
+            error={errors.productId?.[0]}
+            inputRef={productInputRef}
+          />
         )}
-        <ProductPicker
-          products={products}
-          text={productText}
-          product={product}
-          onChange={(text, picked) => {
-            setProductText(text);
-            setPickedProduct(picked);
-            clearFieldError("productId");
-          }}
-          onPick={() => quantityInputRef.current?.focus()}
-          error={errors.productId?.[0]}
-          inputRef={productInputRef}
-        />
         <NumberInput
           ref={quantityInputRef}
           label="Cantidad"
@@ -283,49 +315,61 @@ function InboundForm() {
           inputWrapperOrder={["label", "input", "description", "error"]}
           error={errors.note?.[0]}
         />
-        {product && (
-          <Stack gap="xs">
-            <Text fw={500}>Resumen</Text>
-            {summary === null ? (
-              <Text size="sm">Cargando el stock del producto…</Text>
-            ) : (
-              <>
-                <Text size="sm">
-                  {validQuantity === null
-                    ? `Stock actual: ${formatQuantity(summary.stock)}`
-                    : `Stock: ${formatQuantity(summary.stock)} → ${formatQuantity(stockAfterInbound(summary.stock, validQuantity))}`}
-                </Text>
-                {validQuantity !== null && costCents !== null && (
+        {editing ? (
+          <InboundEditSummary
+            movement={movement}
+            summary={summary}
+            quantity={validQuantity}
+            costCents={costCents}
+            movementDate={movementDate}
+          />
+        ) : (
+          product && (
+            <Stack gap="xs">
+              <Text fw={500}>Resumen</Text>
+              {summary === null ? (
+                <Text size="sm">Cargando el stock del producto…</Text>
+              ) : (
+                <>
                   <Text size="sm">
-                    Costo unitario:{" "}
-                    {formatMoney(unitCost(costCents, validQuantity), 3)}
+                    {validQuantity === null
+                      ? `Stock actual: ${formatQuantity(summary.stock)}`
+                      : `Stock: ${formatQuantity(summary.stock)} → ${formatQuantity(stockAfterInbound(summary.stock, validQuantity))}`}
                   </Text>
-                )}
-                <Text size="sm">
-                  Último costo unitario:{" "}
-                  {summary.lastInboundQuantity === null ||
-                  summary.lastInboundTotalCost === null
-                    ? "Sin ingresos anteriores"
-                    : formatMoney(
-                        unitCost(
-                          summary.lastInboundTotalCost,
-                          summary.lastInboundQuantity,
-                        ),
-                        3,
-                      )}
+                  {validQuantity !== null && costCents !== null && (
+                    <Text size="sm">
+                      Costo unitario:{" "}
+                      {formatMoney(unitCost(costCents, validQuantity), 3)}
+                    </Text>
+                  )}
+                  <Text size="sm">
+                    Costo unitario anterior
+                    {summary.lastInboundMovementDate !== null &&
+                      ` (${formatShortDate(summary.lastInboundMovementDate)})`}
+                    : {formatLastUnitCost(summary)}
+                  </Text>
+                </>
+              )}
+              {movementDate !== "" && movementDate !== today() && (
+                <Text size="sm" fw={700}>
+                  Fecha del movimiento: {formatDate(movementDate)} (no es hoy)
                 </Text>
-              </>
-            )}
-            {movementDate !== "" && movementDate !== today() && (
-              <Text size="sm" fw={700}>
-                Fecha del movimiento: {formatDate(movementDate)} (no es hoy)
-              </Text>
-            )}
-          </Stack>
+              )}
+            </Stack>
+          )
         )}
         <Button type="submit" loading={saving}>
-          Guardar ingreso
+          {editing ? "Guardar cambios" : "Guardar ingreso"}
         </Button>
+        {editing && (
+          <Button
+            component="a"
+            href="/inventario/movimientos"
+            variant="default"
+          >
+            Cancelar
+          </Button>
+        )}
       </Stack>
     </form>
   );

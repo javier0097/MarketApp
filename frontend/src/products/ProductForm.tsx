@@ -20,7 +20,7 @@ import {
   type ProductResponse,
 } from "../api/products.ts";
 import { formatMoney, fromCents, toCents } from "../lib/money.ts";
-import { rememberSavedProduct } from "../lib/savedProduct.ts";
+import { rememberInSession, savedProductKey } from "../lib/session.ts";
 import ProductSavedAlert from "./ProductSavedAlert.tsx";
 
 type FieldErrors = Record<string, string[]>;
@@ -129,7 +129,8 @@ function ProductForm({ product }: { product?: ProductResponse }) {
     setSaving(true);
     try {
       if (product) {
-        rememberSavedProduct(
+        rememberInSession(
+          savedProductKey,
           await updateProduct(product.id, { code, name, salePrice }),
         );
         window.location.assign("/productos");
