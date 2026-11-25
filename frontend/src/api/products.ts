@@ -14,9 +14,13 @@ export type ProductResponse = {
   updatedAt: string;
 };
 
+export type ProductWithStockResponse = ProductResponse & { stock: number };
+
 type NextInternalCodeResponse = { code: string };
 
-export function getProducts(signal?: AbortSignal): Promise<ProductResponse[]> {
+export function getProducts(
+  signal?: AbortSignal,
+): Promise<ProductWithStockResponse[]> {
   return request("/api/products", { signal });
 }
 

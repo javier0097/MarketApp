@@ -4,6 +4,7 @@ using MarketApp.Api.Dtos.Responses;
 using MarketApp.Api.Entities;
 using MarketApp.Api.Exceptions;
 using MarketApp.Api.Helpers;
+using MarketApp.Api.Queries;
 using MarketApp.Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -60,12 +61,20 @@ public class ProductService(MarketAppDbContext db, ILogger<ProductService> logge
         return new ProductResponse(product.Id, product.Code, product.Name, product.SalePrice, product.UpdatedAt);
     }
 
-    public async Task<List<ProductResponse>> GetActiveAsync()
+    public async Task<List<ProductWithStockResponse>> GetActiveAsync()
     {
         return await db.Products
             .Where(p => p.IsActive)
             .OrderByDescending(p => p.UpdatedAt)
-            .Select(p => new ProductResponse(p.Id, p.Code, p.Name, p.SalePrice, p.UpdatedAt))
+            .Select(p => new ProductWithStockResponse(
+                p.Id,
+                p.Code,
+                p.Name,
+                p.SalePrice,
+                db.InventoryMovements
+                    .Where(m => m.ProductId == p.Id)
+                    .Sum(InventoryMovementQueries.StockQuantity),
+                p.UpdatedAt))
             .ToListAsync();
     }
 

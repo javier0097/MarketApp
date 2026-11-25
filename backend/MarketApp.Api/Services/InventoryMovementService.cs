@@ -4,6 +4,7 @@ using MarketApp.Api.Dtos.Responses;
 using MarketApp.Api.Entities;
 using MarketApp.Api.Enums;
 using MarketApp.Api.Exceptions;
+using MarketApp.Api.Queries;
 using MarketApp.Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -98,7 +99,9 @@ public class InventoryMovementService(MarketAppDbContext db, ILogger<InventoryMo
 
         var movements = db.InventoryMovements.Where(m => m.ProductId == productId && !m.IsVoided);
 
-        var stock = await movements.SumAsync(m => m.Type == MovementType.Inbound ? m.Quantity : -m.Quantity);
+        var stock = await db.InventoryMovements
+            .Where(m => m.ProductId == productId)
+            .SumAsync(InventoryMovementQueries.StockQuantity);
 
         var lastInbound = await movements
             .Where(m => m.Type == MovementType.Inbound)
