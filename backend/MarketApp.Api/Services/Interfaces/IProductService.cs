@@ -9,7 +9,7 @@ public interface IProductService
 
     Task<ProductResponse> UpdateAsync(int id, SaveProductRequest request);
 
-    Task<List<ProductResponse>> GetActiveAsync();
+    Task<List<ProductWithStockResponse>> GetActiveAsync();
 
     Task<ProductResponse> GetByIdAsync(int id);
 

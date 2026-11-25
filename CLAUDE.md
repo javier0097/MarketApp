@@ -97,7 +97,11 @@ every screen.
   clearly. Short queries stay inline in the service. "Used in more than one
   place" means a whole query or several chained steps (filters, ordering,
   projection); a single repeated step, such as the projection to a response
-  DTO, stays inline.
+  DTO, stays inline. The one exception is a business rule that several
+  queries apply, such as what a movement adds to the stock: it is defined
+  once in the entity's `Queries/` file as an `Expression`, even when it is a
+  single step, because EF has to translate it into SQL. A projection or
+  mapping is not a business rule.
 - Types carry a suffix that says what they are, set by their folder:
   `Controllers/` → `Controller`, `Services/` → `Service`,
   `Services/Interfaces/` → `I…Service`, `Helpers/` → `Helper`, `Queries/` →
