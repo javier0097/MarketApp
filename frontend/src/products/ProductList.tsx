@@ -11,8 +11,13 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { getErrorMessage } from "../api/errors.ts";
-import { getProducts, type ProductResponse } from "../api/products.ts";
+import {
+  getProducts,
+  type ProductResponse,
+  type ProductWithStockResponse,
+} from "../api/products.ts";
 import { formatDateTime } from "../lib/dates.ts";
+import { formatQuantity } from "../lib/inventory.ts";
 import { formatMoney } from "../lib/money.ts";
 import {
   clearFromSession,
@@ -23,7 +28,9 @@ import { matchesSearchWords, toSearchWords } from "../lib/search.ts";
 import ProductSavedAlert from "./ProductSavedAlert.tsx";
 
 function ProductList() {
-  const [products, setProducts] = useState<ProductResponse[] | null>(null);
+  const [products, setProducts] = useState<ProductWithStockResponse[] | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [savedProduct] = useState(() =>
@@ -124,7 +131,7 @@ function ProductList() {
   );
 }
 
-function ProductTable({ products }: { products: ProductResponse[] }) {
+function ProductTable({ products }: { products: ProductWithStockResponse[] }) {
   return (
     <Table striped>
       <Table.Thead>
@@ -134,6 +141,7 @@ function ProductTable({ products }: { products: ProductResponse[] }) {
           <Table.Th ta="right" style={{ whiteSpace: "nowrap" }}>
             Precio de venta
           </Table.Th>
+          <Table.Th ta="right">Stock</Table.Th>
           <Table.Th pl="xl">Actualizado</Table.Th>
           <Table.Th>Acciones</Table.Th>
         </Table.Tr>
@@ -147,6 +155,9 @@ function ProductTable({ products }: { products: ProductResponse[] }) {
             </Table.Td>
             <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}>
               {formatMoney(product.salePrice)}
+            </Table.Td>
+            <Table.Td ta="right" style={{ whiteSpace: "nowrap" }}>
+              {formatQuantity(product.stock)}
             </Table.Td>
             <Table.Td pl="xl" style={{ whiteSpace: "nowrap" }}>
               {formatDateTime(product.updatedAt)}
