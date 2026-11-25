@@ -1,6 +1,7 @@
 using MarketApp.Api.Dtos.Requests;
 using MarketApp.Api.Dtos.Responses;
 using MarketApp.Api.Entities;
+using MarketApp.Api.Enums;
 using MarketApp.Api.Exceptions;
 using MarketApp.Api.Services;
 using MarketApp.Api.Tests.Support;
@@ -637,6 +638,110 @@ public class ProductServiceTests
         Assert.Equal(["TMV00004", "TMV00001", "TMV00003"], codes);
     }
 
+    [Fact]
+    public async Task Returns_a_stock_of_zero_for_a_product_without_movements()
+    {
+        using var database = new TestDatabase();
+        await SeedProductsAsync(database, NewProduct("TMV00001"));
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        Assert.Equal(0, Assert.Single(products).Stock);
+    }
+
+    [Fact]
+    public async Task Adds_the_inbound_and_subtracts_the_outbound_quantities_in_the_stock()
+    {
+        using var database = new TestDatabase();
+        var product = NewProduct("TMV00001");
+        await SeedProductsAsync(database, product);
+        await SeedMovementsAsync(
+            database,
+            NewInbound(product.Id, 24),
+            NewInbound(product.Id, 12),
+            NewOutbound(product.Id, 5));
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        Assert.Equal(31, Assert.Single(products).Stock);
+    }
+
+    [Fact]
+    public async Task Returns_a_stock_of_zero_when_the_outbound_quantities_equal_the_inbound_ones()
+    {
+        using var database = new TestDatabase();
+        var product = NewProduct("TMV00001");
+        await SeedProductsAsync(database, product);
+        await SeedMovementsAsync(database, NewInbound(product.Id, 10), NewOutbound(product.Id, 10));
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        Assert.Equal(0, Assert.Single(products).Stock);
+    }
+
+    [Fact]
+    public async Task Returns_a_negative_stock_when_the_outbound_quantities_exceed_the_inbound_ones()
+    {
+        using var database = new TestDatabase();
+        var product = NewProduct("TMV00001");
+        await SeedProductsAsync(database, product);
+        await SeedMovementsAsync(database, NewInbound(product.Id, 5), NewOutbound(product.Id, 8));
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        Assert.Equal(-3, Assert.Single(products).Stock);
+    }
+
+    [Fact]
+    public async Task Leaves_voided_movements_out_of_the_stock()
+    {
+        using var database = new TestDatabase();
+        var product = NewProduct("TMV00001");
+        await SeedProductsAsync(database, product);
+        await SeedMovementsAsync(
+            database,
+            NewInbound(product.Id, 24),
+            NewInbound(product.Id, 12, isVoided: true),
+            NewOutbound(product.Id, 5, isVoided: true));
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        Assert.Equal(24, Assert.Single(products).Stock);
+    }
+
+    [Fact]
+    public async Task Counts_only_the_movements_of_each_product_in_its_stock()
+    {
+        using var database = new TestDatabase();
+        var first = NewProduct("TMV00001");
+        var second = NewProduct("TMV00002");
+        await SeedProductsAsync(database, first, second, NewProduct("TMV00003"));
+        await SeedMovementsAsync(
+            database,
+            NewInbound(first.Id, 24),
+            NewInbound(second.Id, 100),
+            NewOutbound(first.Id, 5),
+            NewOutbound(second.Id, 7));
+        using var context = database.CreateContext();
+        var service = new ProductService(context, NullLogger<ProductService>.Instance);
+
+        var products = await service.GetActiveAsync();
+
+        Assert.Equal(19, products.Single(product => product.Code == "TMV00001").Stock);
+        Assert.Equal(93, products.Single(product => product.Code == "TMV00002").Stock);
+        Assert.Equal(0, products.Single(product => product.Code == "TMV00003").Stock);
+    }
+
     // ---------- GetByIdAsync ----------
 
     [Fact]
@@ -1249,6 +1354,32 @@ public class ProductServiceTests
         using var context = database.CreateContext();
         var service = new ProductService(context, NullLogger<ProductService>.Instance);
         return await service.CreateAsync(request);
+    }
+
+    private static InventoryMovement NewInbound(int productId, int quantity, bool isVoided = false) =>
+        NewMovement(productId, MovementType.Inbound, quantity, isVoided);
+
+    private static InventoryMovement NewOutbound(int productId, int quantity, bool isVoided = false) =>
+        NewMovement(productId, MovementType.Outbound, quantity, isVoided);
+
+    private static InventoryMovement NewMovement(int productId, MovementType type, int quantity, bool isVoided) =>
+        new()
+        {
+            ProductId = productId,
+            Type = type,
+            Quantity = quantity,
+            Amount = quantity * 750,
+            MovementDate = new DateOnly(2026, 10, 1),
+            CreatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc),
+            IsVoided = isVoided,
+            VoidReason = isVoided ? "Registrado por error" : null,
+        };
+
+    private static async Task SeedMovementsAsync(TestDatabase database, params InventoryMovement[] movements)
+    {
+        using var context = database.CreateContext();
+        context.Set<InventoryMovement>().AddRange(movements);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
     private static async Task<Product> FindProductAsync(TestDatabase database, int id)

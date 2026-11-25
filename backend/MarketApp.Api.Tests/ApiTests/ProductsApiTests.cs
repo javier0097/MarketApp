@@ -10,6 +10,7 @@ public class ProductsApiTests
 {
     private const string ProductsUrl = "/api/products";
     private const string NextInternalCodeUrl = "/api/products/next-internal-code";
+    private const string InboundUrl = "/api/inventory-movements/inbound";
     private const string PriceRangeMessage = "El precio de venta debe estar entre Bs 0,01 y Bs 9.999,99.";
     private const string InvalidBarcodeMessage =
         "El código de barras no es válido. Revise que esté bien escrito o marque \"Sin código de barras\".";
@@ -327,6 +328,51 @@ public class ProductsApiTests
 
         var ids = products.Select(product => product.Id).ToList();
         Assert.Equal([third, second, first], ids);
+    }
+
+    [Fact]
+    public async Task List_sends_a_stock_of_zero_for_a_product_without_movements()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        await CreateProductAsync(client, ValidBarcode, "Leche entera 1 L", 1250);
+
+        using var response = await client.GetAsync(ProductsUrl, TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, body[0].GetProperty("stock").GetInt32());
+    }
+
+    [Fact]
+    public async Task List_returns_the_stock_as_the_sum_of_the_inbounds_registered_through_the_api()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        var id = await CreateProductAsync(client, ValidBarcode, "Leche entera 1 L", 1250);
+        await CreateInboundAsync(client, id, 24);
+        await CreateInboundAsync(client, id, 12);
+
+        var products = await GetProductsAsync(client);
+
+        Assert.Equal(36, Assert.Single(products).Stock);
+    }
+
+    [Fact]
+    public async Task List_returns_the_stock_with_the_edited_quantity_of_an_inbound()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        var id = await CreateProductAsync(client, ValidBarcode, "Leche entera 1 L", 1250);
+        var inboundId = await CreateInboundAsync(client, id, 24);
+        using var edit = await client.PutAsJsonAsync(
+            $"/api/inventory-movements/{inboundId}/inbound",
+            new { quantity = 30, totalCost = 22500, movementDate = Yesterday() },
+            TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
+
+        var products = await GetProductsAsync(client);
+
+        Assert.Equal(30, Assert.Single(products).Stock);
     }
 
     // ---------- GET /api/products/{id} ----------
@@ -737,7 +783,23 @@ public class ProductsApiTests
         return body;
     }
 
-    private sealed record ProductBody(int Id, string Code, string Name, int SalePrice, DateTime UpdatedAt);
+    private static string Yesterday() => DateOnly.FromDateTime(DateTime.Now).AddDays(-1).ToString("yyyy-MM-dd");
+
+    private static async Task<int> CreateInboundAsync(HttpClient client, int productId, int quantity)
+    {
+        using var response = await client.PostAsJsonAsync(
+            InboundUrl,
+            new { productId, quantity, totalCost = quantity * 750, movementDate = Yesterday() },
+            TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<MovementIdBody>(TestContext.Current.CancellationToken);
+        Assert.NotNull(body);
+        return body.Id;
+    }
+
+    private sealed record ProductBody(int Id, string Code, string Name, int SalePrice, DateTime UpdatedAt, int Stock);
+
+    private sealed record MovementIdBody(int Id);
 
     private sealed record ValidationProblemBody(Dictionary<string, string[]> Errors);
 
